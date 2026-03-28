@@ -226,6 +226,303 @@
     font-weight: 600;
   }
 
+  /* Demo section */
+  .demo-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .demo-tab {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .demo-tab:hover { border-color: var(--blue); color: var(--text); }
+  .demo-tab.active { background: rgba(59,130,246,0.15); border-color: var(--blue); color: var(--blue); }
+  .demo-panel {
+    display: none;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .demo-panel.active { display: block; }
+
+  /* Demo 1: Concurrent calls dashboard */
+  .dash-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .dash-header .title { font-weight: 600; font-size: 14px; }
+  .dash-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+  }
+  .dash-stat {
+    background: var(--card);
+    padding: 16px 20px;
+    text-align: center;
+  }
+  .dash-stat .val {
+    font-size: 28px;
+    font-weight: 700;
+    font-family: 'SF Mono', monospace;
+  }
+  .dash-stat .lbl {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+  .call-list {
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .call-row {
+    display: grid;
+    grid-template-columns: 40px 1fr 100px 80px 80px 70px;
+    align-items: center;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    transition: opacity 0.3s;
+  }
+  .call-row.header {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    position: sticky;
+    top: 0;
+    background: var(--card);
+    z-index: 1;
+  }
+  .call-row .pulse-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  .call-row .caller { font-weight: 500; }
+  .call-row .worker { color: var(--muted); font-family: monospace; font-size: 12px; }
+  .call-row .latency { font-family: monospace; }
+  .call-row .latency.good { color: var(--green); }
+  .call-row .latency.warn { color: var(--yellow); }
+  .call-row .dur { color: var(--muted); font-family: monospace; }
+  .badge-sm {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(34,197,94,0.12);
+    color: var(--green);
+  }
+
+  /* Demo 2: Latency pipeline */
+  .pipeline-demo { padding: 32px 24px; }
+  .pipeline-turn {
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--bg);
+    border-radius: 12px;
+  }
+  .pipeline-turn .turn-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+  .pipeline-stages {
+    display: flex;
+    gap: 4px;
+    height: 40px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .p-stage {
+    height: 100%;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    opacity: 0.3;
+    transition: opacity 0.4s, width 0.4s;
+    overflow: hidden;
+    white-space: nowrap;
+    width: 0;
+  }
+  .p-stage.active { opacity: 1; }
+  .p-stage.vad { background: #a16207; }
+  .p-stage.stt { background: #0891b2; }
+  .p-stage.llm { background: #7c3aed; }
+  .p-stage.tts { background: #16a34a; }
+  .p-stage.net { background: #4b5563; }
+  .p-arrow {
+    color: var(--muted);
+    font-size: 14px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .p-arrow.active { opacity: 1; }
+  .pipeline-result {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .pipeline-result .total {
+    font-weight: 700;
+    font-family: monospace;
+  }
+  .pipeline-result .total.pass { color: var(--green); }
+  .pipeline-result .total.fail { color: var(--red); }
+  .pipeline-summary {
+    padding: 20px;
+    background: var(--bg);
+    border-radius: 12px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    text-align: center;
+  }
+  .pipeline-summary .ps-val {
+    font-size: 24px;
+    font-weight: 700;
+    font-family: monospace;
+  }
+  .pipeline-summary .ps-lbl {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  /* Demo 3: Barge-in conversation */
+  .convo-demo { padding: 24px; }
+  .convo-window {
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 24px;
+    min-height: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .msg {
+    max-width: 75%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    opacity: 0;
+    transform: translateY(8px);
+    animation: msgIn 0.3s ease forwards;
+  }
+  .msg.agent {
+    align-self: flex-start;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .msg.caller {
+    align-self: flex-end;
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.25);
+    border-bottom-right-radius: 4px;
+  }
+  .msg .sender {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .msg.agent .sender { color: var(--green); }
+  .msg.caller .sender { color: var(--blue); }
+  .msg .meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-family: monospace;
+  }
+  .msg.interrupted .text {
+    text-decoration: line-through;
+    opacity: 0.5;
+  }
+  .msg .interrupt-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    background: rgba(239,68,68,0.15);
+    color: var(--red);
+    margin-left: 8px;
+  }
+  @keyframes msgIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .typing-indicator {
+    align-self: flex-start;
+    padding: 12px 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    border-bottom-left-radius: 4px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .typing-indicator span {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    animation: typeDot 1.2s ease-in-out infinite;
+  }
+  .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typeDot {
+    0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+    30% { opacity: 1; transform: scale(1); }
+  }
+  .convo-controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .convo-btn {
+    padding: 10px 24px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .convo-btn:hover { border-color: var(--blue); background: rgba(59,130,246,0.1); }
+  .convo-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .convo-btn.primary:hover { background: #2563eb; }
+
   /* Footer */
   .footer {
     text-align: center;
@@ -244,6 +541,11 @@
     .stats { gap: 24px; }
     .stat .num { font-size: 28px; }
     .arch-diagram { font-size: 11px; padding: 16px; }
+    .dash-stats { grid-template-columns: repeat(2, 1fr); }
+    .call-row { grid-template-columns: 30px 1fr 70px 60px; }
+    .call-row .worker, .call-row .dur { display: none; }
+    .pipeline-summary { grid-template-columns: repeat(2, 1fr); }
+    .demo-tabs { flex-wrap: wrap; }
   }
 </style>
 </head>
@@ -418,9 +720,327 @@
 
 </div>
 
+  <div class="section">
+    <h2>Live Demo</h2>
+    <p class="subtitle">Interactive simulations of the three core demo scenarios</p>
+
+    <div class="demo-tabs">
+      <div class="demo-tab active" onclick="showDemo('concurrent')">Concurrent Calls</div>
+      <div class="demo-tab" onclick="showDemo('latency')">Latency Measurement</div>
+      <div class="demo-tab" onclick="showDemo('bargein')">Barge-In</div>
+    </div>
+
+    <!-- Demo 1: Concurrent Calls Dashboard -->
+    <div class="demo-panel active" id="demo-concurrent">
+      <div class="dash-header">
+        <div class="title">Real-Time Call Monitor</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);">
+          <div class="status-dot" style="width:6px;height:6px;"></div> Live Simulation
+        </div>
+      </div>
+      <div class="dash-stats">
+        <div class="dash-stat"><div class="val green" id="d1-active">0</div><div class="lbl">Active Calls</div></div>
+        <div class="dash-stat"><div class="val blue" id="d1-avg">--</div><div class="lbl">Avg Latency</div></div>
+        <div class="dash-stat"><div class="val purple" id="d1-p95">--</div><div class="lbl">P95 Latency</div></div>
+        <div class="dash-stat"><div class="val cyan" id="d1-mos">--</div><div class="lbl">Avg MOS</div></div>
+      </div>
+      <div class="call-list" id="d1-calls">
+        <div class="call-row header">
+          <div></div><div>Caller</div><div>Worker</div><div>Latency</div><div>Duration</div><div>Status</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Demo 2: Latency Pipeline -->
+    <div class="demo-panel" id="demo-latency">
+      <div class="dash-header">
+        <div class="title">Pipeline Latency Measurement — 10 Sample Turns</div>
+        <div>
+          <button class="convo-btn primary" onclick="runLatencyDemo()" id="latency-btn">Run Measurement</button>
+        </div>
+      </div>
+      <div class="pipeline-demo">
+        <div id="latency-turns"></div>
+        <div class="pipeline-summary" id="latency-summary" style="display:none;">
+          <div><div class="ps-val green" id="ls-avg">--</div><div class="ps-lbl">Avg E2E</div></div>
+          <div><div class="ps-val" id="ls-p95">--</div><div class="ps-lbl">P95 E2E</div></div>
+          <div><div class="ps-val" id="ls-min">--</div><div class="ps-lbl">Min</div></div>
+          <div><div class="ps-val" id="ls-max">--</div><div class="ps-lbl">Max</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Demo 3: Barge-In Conversation -->
+    <div class="demo-panel" id="demo-bargein">
+      <div class="dash-header">
+        <div class="title">Barge-In Demo — Agent Interruption Handling</div>
+        <div>
+          <button class="convo-btn primary" onclick="runBargeInDemo()" id="bargein-btn">Play Scenario</button>
+        </div>
+      </div>
+      <div class="convo-demo">
+        <div class="convo-window" id="convo-window"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
 <div class="footer">
   <p>Built with LiveKit Agents SDK, Deepgram, OpenAI, and Cartesia</p>
 </div>
+
+<script>
+// ===== Demo Tab Switching =====
+function showDemo(id) {
+  document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.demo-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('demo-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ===== Demo 1: Concurrent Calls =====
+const callerNames = [
+  '+1 (415) 555-0142', '+1 (212) 555-0198', '+1 (310) 555-0267', '+1 (617) 555-0331',
+  '+1 (503) 555-0419', '+1 (702) 555-0584', '+1 (312) 555-0673', '+1 (404) 555-0752',
+  '+1 (206) 555-0841', '+1 (305) 555-0936', '+1 (512) 555-1024', '+1 (303) 555-1118',
+  '+1 (720) 555-1203', '+1 (480) 555-1297', '+1 (619) 555-1382', '+1 (704) 555-1476',
+  '+1 (602) 555-1561', '+1 (813) 555-1655', '+1 (469) 555-1740', '+1 (615) 555-1834',
+  '+1 (971) 555-1929', '+1 (801) 555-2013', '+1 (916) 555-2108', '+1 (651) 555-2202',
+  '+1 (505) 555-2297', '+1 (918) 555-2381', '+1 (402) 555-2476', '+1 (808) 555-2570',
+  '+1 (901) 555-2665', '+1 (225) 555-2759',
+];
+const workers = ['worker-a1b2', 'worker-c3d4', 'worker-e5f6', 'worker-g7h8', 'worker-i9j0'];
+
+let d1Calls = [];
+let d1Interval;
+let d1Timer = 0;
+
+function startConcurrentDemo() {
+  clearInterval(d1Interval);
+  d1Calls = [];
+  d1Timer = 0;
+  d1Interval = setInterval(() => {
+    d1Timer++;
+    // Ramp up: add calls in first 15 seconds
+    if (d1Timer <= 30 && d1Calls.length < 28 && Math.random() < 0.6) {
+      const latency = 320 + Math.random() * 220;
+      d1Calls.push({
+        id: d1Calls.length,
+        caller: callerNames[d1Calls.length % callerNames.length],
+        worker: workers[Math.floor(Math.random() * workers.length)],
+        latency: latency,
+        startTime: d1Timer,
+        active: true,
+      });
+    }
+    // Randomly end some calls after 20s
+    if (d1Timer > 20) {
+      d1Calls.forEach(c => {
+        if (c.active && (d1Timer - c.startTime) > 15 && Math.random() < 0.08) {
+          c.active = false;
+        }
+      });
+    }
+    // Jitter the latency slightly
+    d1Calls.forEach(c => {
+      if (c.active) c.latency = Math.max(280, c.latency + (Math.random() - 0.5) * 40);
+    });
+    renderConcurrentDemo();
+  }, 600);
+}
+
+function renderConcurrentDemo() {
+  const active = d1Calls.filter(c => c.active);
+  const latencies = active.map(c => c.latency);
+  const avg = latencies.length ? latencies.reduce((a,b) => a+b, 0) / latencies.length : 0;
+  const sorted = [...latencies].sort((a,b) => a-b);
+  const p95 = sorted.length ? sorted[Math.floor(sorted.length * 0.95)] : 0;
+
+  document.getElementById('d1-active').textContent = active.length;
+  document.getElementById('d1-avg').textContent = avg ? Math.round(avg) + 'ms' : '--';
+  document.getElementById('d1-p95').textContent = p95 ? Math.round(p95) + 'ms' : '--';
+  document.getElementById('d1-mos').textContent = active.length ? '4.' + Math.floor(Math.random() * 3 + 1) : '--';
+
+  const container = document.getElementById('d1-calls');
+  const header = '<div class="call-row header"><div></div><div>Caller</div><div>Worker</div><div>Latency</div><div>Duration</div><div>Status</div></div>';
+  const rows = active.slice(-15).reverse().map(c => {
+    const dur = d1Timer - c.startTime;
+    const m = Math.floor(dur * 0.6 / 60);
+    const s = Math.floor(dur * 0.6) % 60;
+    const latClass = c.latency < 500 ? 'good' : 'warn';
+    return `<div class="call-row">
+      <div><div class="pulse-dot"></div></div>
+      <div class="caller">${c.caller}</div>
+      <div class="worker">${c.worker}</div>
+      <div class="latency ${latClass}">${Math.round(c.latency)}ms</div>
+      <div class="dur">${m}:${s.toString().padStart(2,'0')}</div>
+      <div><span class="badge-sm">active</span></div>
+    </div>`;
+  }).join('');
+  container.innerHTML = header + rows;
+}
+
+// Auto-start demo 1
+startConcurrentDemo();
+
+// ===== Demo 2: Latency Pipeline =====
+let latencyRunning = false;
+
+async function runLatencyDemo() {
+  if (latencyRunning) return;
+  latencyRunning = true;
+  document.getElementById('latency-btn').textContent = 'Running...';
+  document.getElementById('latency-btn').disabled = true;
+  document.getElementById('latency-turns').innerHTML = '';
+  document.getElementById('latency-summary').style.display = 'none';
+
+  const results = [];
+
+  for (let i = 0; i < 10; i++) {
+    const vad = 35 + Math.random() * 30;
+    const stt = 120 + Math.random() * 60;
+    const llm = 150 + Math.random() * 100;
+    const tts = 70 + Math.random() * 60;
+    const net = 60 + Math.random() * 80;
+    const total = vad + stt + llm + tts + net;
+    results.push({ vad, stt, llm, tts, net, total });
+
+    const turnId = `lt-${i}`;
+    const turnHtml = `
+      <div class="pipeline-turn" id="${turnId}">
+        <div class="turn-label">Turn ${i + 1}</div>
+        <div class="pipeline-stages">
+          <div class="p-stage vad" id="${turnId}-vad">VAD ${Math.round(vad)}ms</div>
+          <div class="p-arrow" id="${turnId}-a1">&#9654;</div>
+          <div class="p-stage stt" id="${turnId}-stt">STT ${Math.round(stt)}ms</div>
+          <div class="p-arrow" id="${turnId}-a2">&#9654;</div>
+          <div class="p-stage llm" id="${turnId}-llm">LLM ${Math.round(llm)}ms</div>
+          <div class="p-arrow" id="${turnId}-a3">&#9654;</div>
+          <div class="p-stage tts" id="${turnId}-tts">TTS ${Math.round(tts)}ms</div>
+          <div class="p-arrow" id="${turnId}-a4">&#9654;</div>
+          <div class="p-stage net" id="${turnId}-net">NET ${Math.round(net)}ms</div>
+        </div>
+        <div class="pipeline-result">
+          <span>Turn ${i + 1} total</span>
+          <span class="total ${total < 600 ? 'pass' : 'fail'}" id="${turnId}-total">--</span>
+        </div>
+      </div>`;
+    document.getElementById('latency-turns').insertAdjacentHTML('beforeend', turnHtml);
+
+    // Animate stages
+    const stages = ['vad', 'stt', 'llm', 'tts', 'net'];
+    const widths = [vad/total*100, stt/total*100, llm/total*100, tts/total*100, net/total*100];
+    const arrows = ['a1', 'a2', 'a3', 'a4'];
+
+    for (let s = 0; s < stages.length; s++) {
+      const el = document.getElementById(`${turnId}-${stages[s]}`);
+      el.classList.add('active');
+      el.style.width = widths[s] + '%';
+      if (s < arrows.length) {
+        document.getElementById(`${turnId}-${arrows[s]}`).classList.add('active');
+      }
+      await sleep(120);
+    }
+    document.getElementById(`${turnId}-total`).textContent = Math.round(total) + 'ms';
+    await sleep(200);
+  }
+
+  // Show summary
+  const totals = results.map(r => r.total).sort((a,b) => a-b);
+  const avg = totals.reduce((a,b) => a+b, 0) / totals.length;
+  const p95 = totals[Math.floor(totals.length * 0.95)];
+
+  document.getElementById('ls-avg').textContent = Math.round(avg) + 'ms';
+  document.getElementById('ls-avg').className = 'ps-val ' + (avg < 600 ? 'green' : 'red');
+  document.getElementById('ls-p95').textContent = Math.round(p95) + 'ms';
+  document.getElementById('ls-p95').className = 'ps-val ' + (p95 < 600 ? 'green' : 'yellow');
+  document.getElementById('ls-min').textContent = Math.round(totals[0]) + 'ms';
+  document.getElementById('ls-max').textContent = Math.round(totals[totals.length-1]) + 'ms';
+  document.getElementById('latency-summary').style.display = 'grid';
+
+  document.getElementById('latency-btn').textContent = 'Run Again';
+  document.getElementById('latency-btn').disabled = false;
+  latencyRunning = false;
+}
+
+// ===== Demo 3: Barge-In Conversation =====
+let bargeInRunning = false;
+
+const bargeInScript = [
+  { type: 'agent', text: "Hello! Thank you for calling ShopEase. My name is Alex. How can I help you today?", delay: 800, latency: '487ms' },
+  { type: 'caller', text: "Hi, I'd like to know about your refund policy.", delay: 1200 },
+  { type: 'typing', delay: 500 },
+  { type: 'agent', text: "Of course! Let me look that up for you. Our standard refund policy allows for a full refund within 30 days of delivery. Items must be returned in their original condition with all tags attached. Refunds are processed within 5 to 7 business days after we receive the—", delay: 1500, latency: '412ms', interrupted: true, cutAt: "5 to 7 business days after we receive the—" },
+  { type: 'interrupt' },
+  { type: 'caller', text: "Wait, what about digital purchases?", delay: 600 },
+  { type: 'typing', delay: 500 },
+  { type: 'agent', text: "Great question! Digital downloads and gift cards are unfortunately not eligible for refunds. However, if you're having an issue with a digital purchase, I'd be happy to help troubleshoot or see what options we have available.", delay: 1200, latency: '523ms' },
+  { type: 'caller', text: "Actually, I want to cancel my subscription entirely.", delay: 1400 },
+  { type: 'typing', delay: 600 },
+  { type: 'agent', text: "I completely understand. Before I process that cancellation, could you tell me what prompted this? I'd love to see if there's something we can do to make it right — maybe a discount on your next few months or a different plan that better fits your needs?", delay: 1500, latency: '451ms' },
+  { type: 'caller', text: "No thanks, just cancel it please.", delay: 1200 },
+  { type: 'typing', delay: 400 },
+  { type: 'agent', text: "Absolutely, I'll take care of that for you right away. Your subscription has been cancelled. You'll still have access until the end of your current billing period. Is there anything else I can help with today?", delay: 1300, latency: '398ms' },
+];
+
+async function runBargeInDemo() {
+  if (bargeInRunning) return;
+  bargeInRunning = true;
+  document.getElementById('bargein-btn').textContent = 'Playing...';
+  document.getElementById('bargein-btn').disabled = true;
+  const win = document.getElementById('convo-window');
+  win.innerHTML = '';
+
+  for (const step of bargeInScript) {
+    if (step.type === 'typing') {
+      const el = document.createElement('div');
+      el.className = 'typing-indicator';
+      el.innerHTML = '<span></span><span></span><span></span>';
+      el.id = 'typing-ind';
+      win.appendChild(el);
+      win.scrollTop = win.scrollHeight;
+      await sleep(step.delay);
+      el.remove();
+      continue;
+    }
+
+    if (step.type === 'interrupt') {
+      await sleep(300);
+      continue;
+    }
+
+    await sleep(step.delay);
+
+    const el = document.createElement('div');
+    el.className = 'msg ' + step.type;
+    if (step.interrupted) el.classList.add('interrupted');
+
+    let html = `<div class="sender">${step.type === 'agent' ? 'Agent (Alex)' : 'Caller'}</div>`;
+
+    if (step.interrupted) {
+      html += `<div class="text">${step.cutAt}</div>`;
+      html += `<span class="interrupt-badge">INTERRUPTED — Barge-in detected</span>`;
+    } else {
+      html += `<div class="text">${step.text}</div>`;
+    }
+
+    if (step.latency) {
+      html += `<div class="meta">Response: ${step.latency} | STT+LLM+TTS pipeline</div>`;
+    }
+
+    el.innerHTML = html;
+    win.appendChild(el);
+    win.scrollTop = win.scrollHeight;
+  }
+
+  document.getElementById('bargein-btn').textContent = 'Replay Scenario';
+  document.getElementById('bargein-btn').disabled = false;
+  bargeInRunning = false;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
 
 </body>
 </html>
