@@ -1,0 +1,28 @@
+{
+  "sip_trunk_inbound": {
+    "name": "Twilio Inbound Trunk",
+    "numbers": ["+1234567890"],
+    "allowed_addresses": [
+      "54.172.60.0/30",
+      "54.244.51.0/30",
+      "54.171.127.192/30",
+      "35.156.191.128/30",
+      "54.65.63.192/30",
+      "54.169.127.128/30",
+      "54.252.254.64/30",
+      "177.71.206.192/30"
+    ],
+    "metadata": "twilio-production"
+  },
+  "sip_dispatch_rule": {
+    "name": "Voice Agent Dispatch",
+    "trunk_ids": [],
+    "rule": {
+      "dispatch_rule_individual": {
+        "room_prefix": "call-",
+        "pin": ""
+      }
+    },
+    "metadata": "voice-agent-dispatch"
+  }
+}
