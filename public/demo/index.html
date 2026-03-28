@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShopEase Voice Agent — Live Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2.9.1/dist/livekit-client.umd.js"></script>
+<style>
+:root {
+  --bg: #0a0c10;
+  --surface: #111318;
+  --card: #171a22;
+  --border: #252833;
+  --hover: #1e2130;
+  --text: #e4e7f0;
+  --muted: #6b7089;
+  --green: #22c55e;
+  --green-dim: rgba(34,197,94,0.12);
+  --yellow: #eab308;
+  --yellow-dim: rgba(234,179,8,0.12);
+  --red: #ef4444;
+  --red-dim: rgba(239,68,68,0.12);
+  --blue: #3b82f6;
+  --blue-dim: rgba(59,130,246,0.12);
+  --purple: #a855f7;
+  --purple-dim: rgba(168,85,247,0.12);
+  --cyan: #06b6d4;
+  --cyan-dim: rgba(6,182,212,0.12);
+  --orange: #f97316;
+  --radius: 10px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ---- Top Bar ---- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.topbar .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 15px;
+}
+.topbar .brand .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: background 0.3s;
+}
+.topbar .brand .dot.live { background: var(--green); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+.topbar .right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.topbar .conn-status {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn {
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn:hover { background: var(--hover); border-color: var(--blue); }
+.btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+.btn.primary:hover { background: #2563eb; }
+.btn.danger { background: var(--red-dim); border-color: transparent; color: var(--red); }
+.btn.sm { padding: 4px 10px; font-size: 12px; }
+
+/* ---- Layout ---- */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  background: var(--border);
+}
+.main-area {
+  background: var(--bg);
+  padding: 20px 24px;
+}
+
+/* ---- Stat Cards Row ---- */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.stat-card .value {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: 'SF Mono','Fira Code',monospace;
+  line-height: 1.1;
+}
+.stat-card .sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.stat-card .sparkline {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 30px;
+  opacity: 0.3;
+}
+
+/* ---- Panels Grid ---- */
+.panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.panel.full { grid-column: 1 / -1; }
+.panel-hdr {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+.panel-hdr .tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.panel-hdr .tag.live { background: var(--green-dim); color: var(--green); }
+.panel-hdr .tag.sim { background: var(--yellow-dim); color: var(--yellow); }
+.panel-body { padding: 16px; }
+.panel-body.np { padding: 0; }
+
+/* ---- Calls Table ---- */
+.calls-tbl {
+  width: 100%;
+  border-collapse: collapse;
+}
+.calls-tbl th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--card);
+}
+.calls-tbl td {
+  padding: 8px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+.calls-tbl tr:last-child td { border-bottom: none; }
+.calls-tbl .mono { font-family:'SF Mono',monospace; font-size: 12px; }
+.pdot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+.pdot.on { background: var(--green); }
+.pdot.off { background: var(--muted); }
+.badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.badge.active { background: var(--green-dim); color: var(--green); }
+.badge.ended { background: var(--blue-dim); color: var(--blue); }
+.badge.failed { background: var(--red-dim); color: var(--red); }
+
+/* ---- Latency Timeline ---- */
+.lat-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.lat-label {
+  width: 50px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+  flex-shrink: 0;
+}
+.lat-track {
+  flex: 1;
+  height: 18px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+}
+.lat-seg {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.8);
+  transition: width .4s ease;
+}
+.lat-seg.vad { background: #a16207; }
+.lat-seg.stt { background: #0891b2; }
+.lat-seg.llm { background: #7c3aed; }
+.lat-seg.tts { background: #16a34a; }
+.lat-seg.net { background: #4b5563; }
+.lat-total {
+  width: 60px;
+  font-size: 12px;
+  font-family: monospace;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.lat-total.pass { color: var(--green); }
+.lat-total.fail { color: var(--red); }
+.lat-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.lat-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.lat-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+/* ---- Conversation Log ---- */
+.conv-log {
+  max-height: 360px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.conv-msg {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  animation: fadeUp .3s ease;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)} }
+.conv-msg.agent {
+  align-self: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 3px;
+}
+.conv-msg.caller {
+  align-self: flex-end;
+  background: var(--blue-dim);
+  border: 1px solid rgba(59,130,246,0.2);
+  border-bottom-right-radius: 3px;
+}
+.conv-msg .role {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 3px;
+}
+.conv-msg.agent .role { color: var(--green); }
+.conv-msg.caller .role { color: var(--blue); }
+.conv-msg .timing {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: monospace;
+  margin-top: 4px;
+}
+.conv-msg.interrupted .body {
+  text-decoration: line-through;
+  opacity: .5;
+}
+.interrupt-tag {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  background: var(--red-dim);
+  color: var(--red);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ---- Settings Modal ---- */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  justify-content: center;
+  align-items: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: 520px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 15px;
+}
+.modal-header .close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-header .close:hover { color: var(--text); background: var(--hover); }
+.modal-body { padding: 20px; }
+.field {
+  margin-bottom: 16px;
+}
+.field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 5px;
+}
+.field input, .field select {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-family: 'SF Mono', monospace;
+  outline: none;
+  transition: border-color .2s;
+}
+.field input:focus { border-color: var(--blue); }
+.field input::placeholder { color: var(--muted); }
+.field .hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.field-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.modal-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.divider {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin: 20px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 1024px) {
+  .stat-row { grid-template-columns: repeat(3, 1fr); }
+  .panels { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .stat-row { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <div class="brand">
+    <div class="dot" id="conn-dot"></div>
+    <span>ShopEase Voice Agent</span>
+  </div>
+  <div class="right">
+    <div class="conn-status" id="conn-label">Disconnected</div>
+    <button class="btn" onclick="openSettings()">Settings</button>
+    <button class="btn primary" id="connect-btn" onclick="toggleConnection()">Connect</button>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="main-area">
+
+  <!-- Stat Cards -->
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="label">Active Calls</div>
+      <div class="value green" id="s-active">0</div>
+      <div class="sub" id="s-active-sub">concurrent sessions</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Avg Latency</div>
+      <div class="value blue" id="s-latency">--</div>
+      <div class="sub">end-to-end ms</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">P95 Latency</div>
+      <div class="value purple" id="s-p95">--</div>
+      <div class="sub">95th percentile ms</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">MOS Score</div>
+      <div class="value cyan" id="s-mos">--</div>
+      <div class="sub" id="s-mos-sub">estimated quality</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Calls Handled</div>
+      <div class="value" id="s-total">0</div>
+      <div class="sub">since start</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Failure Rate</div>
+      <div class="value" id="s-fail">0%</div>
+      <div class="sub">setup failures</div>
+    </div>
+  </div>
+
+  <!-- Panels -->
+  <div class="panels">
+
+    <!-- Active Calls -->
+    <div class="panel full">
+      <div class="panel-hdr">
+        <span>Active Calls</span>
+        <span class="tag" id="mode-tag">sim</span>
+      </div>
+      <div class="panel-body np" style="max-height:320px;overflow-y:auto;">
+        <table class="calls-tbl">
+          <thead><tr>
+            <th style="width:30px"></th>
+            <th>Room / Call ID</th>
+            <th>Caller</th>
+            <th>Worker</th>
+            <th>Latency</th>
+            <th>Duration</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody id="calls-tbody">
+            <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px;">No active calls — connect to LiveKit or run simulation</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Latency Breakdown -->
+    <div class="panel">
+      <div class="panel-hdr">
+        <span>Pipeline Latency (Last 8 Turns)</span>
+        <span class="tag" id="lat-tag">sim</span>
+      </div>
+      <div class="panel-body" id="lat-body">
+        <div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">
+          Latency data will appear here
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Conversation -->
+    <div class="panel">
+      <div class="panel-hdr">
+        <span>Conversation Log</span>
+        <button class="btn sm" onclick="runConversation()">Play Demo</button>
+      </div>
+      <div class="panel-body">
+        <div class="conv-log" id="conv-log">
+          <div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">
+            Click "Play Demo" for barge-in scenario
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Health -->
+    <div class="panel">
+      <div class="panel-hdr">
+        <span>Worker Health</span>
+        <span class="tag" id="health-tag">sim</span>
+      </div>
+      <div class="panel-body" id="health-body">
+        <div id="workers-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+      </div>
+    </div>
+
+    <!-- Event Log -->
+    <div class="panel">
+      <div class="panel-hdr">
+        <span>Event Log</span>
+        <button class="btn sm" onclick="clearLog()">Clear</button>
+      </div>
+      <div class="panel-body">
+        <div id="event-log" style="max-height:200px;overflow-y:auto;font-family:monospace;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px;">
+          <div><span style="color:var(--blue);">[system]</span> Dashboard ready. Configure API keys in Settings to connect live.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span>Dashboard Settings</span>
+      <button class="close" onclick="closeSettings()">&times;</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="divider">LiveKit Connection</div>
+      <div class="field">
+        <label>LiveKit URL</label>
+        <input type="text" id="cfg-lk-url" placeholder="wss://your-project.livekit.cloud">
+        <div class="hint">WebSocket URL for your LiveKit server</div>
+      </div>
+      <div class="field-group">
+        <div class="field">
+          <label>API Key</label>
+          <input type="text" id="cfg-lk-key" placeholder="APIxxxxxxxx">
+        </div>
+        <div class="field">
+          <label>API Secret</label>
+          <input type="password" id="cfg-lk-secret" placeholder="xxxxxxxxxxxxxxxx">
+        </div>
+      </div>
+
+      <div class="divider">AI Pipeline</div>
+      <div class="field">
+        <label>OpenAI API Key</label>
+        <input type="password" id="cfg-openai" placeholder="sk-...">
+        <div class="hint">Used for LLM (GPT-4o-mini) and embeddings</div>
+      </div>
+      <div class="field">
+        <label>Deepgram API Key</label>
+        <input type="password" id="cfg-deepgram" placeholder="xxxxxxxxxxxxxxxx">
+        <div class="hint">Used for speech-to-text (Nova-2)</div>
+      </div>
+      <div class="field">
+        <label>Cartesia API Key</label>
+        <input type="password" id="cfg-cartesia" placeholder="xxxxxxxxxxxxxxxx">
+        <div class="hint">Used for text-to-speech (Sonic)</div>
+      </div>
+
+      <div class="divider">Services</div>
+      <div class="field-group">
+        <div class="field">
+          <label>Prometheus URL</label>
+          <input type="text" id="cfg-prom" placeholder="http://localhost:9090">
+        </div>
+        <div class="field">
+          <label>Redis URL</label>
+          <input type="text" id="cfg-redis" placeholder="redis://localhost:6379">
+        </div>
+      </div>
+
+      <div class="divider">Mode</div>
+      <div class="field">
+        <label>Dashboard Mode</label>
+        <select id="cfg-mode">
+          <option value="simulation">Simulation (no backend required)</option>
+          <option value="live">Live (connects to real services)</option>
+        </select>
+        <div class="hint">Simulation mode runs a realistic demo without any backend services</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeSettings()">Cancel</button>
+      <button class="btn danger" onclick="clearConfig()">Clear All</button>
+      <button class="btn primary" onclick="saveSettings()">Save &amp; Apply</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== State =====
+let connected = false;
+let mode = 'simulation'; // 'simulation' | 'live'
+let simInterval = null;
+let simCalls = [];
+let simTimer = 0;
+let simTotalCalls = 0;
+let simFailures = 0;
+let latencyHistory = [];
+let lkRoom = null;
+
+// ===== Config / LocalStorage =====
+const CFG_KEY = 'voiceagent_config';
+
+function loadConfig() {
+  try {
+    const raw = localStorage.getItem(CFG_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function saveConfig(cfg) {
+  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+}
+
+function populateSettingsForm() {
+  const c = loadConfig();
+  document.getElementById('cfg-lk-url').value = c.lkUrl || '';
+  document.getElementById('cfg-lk-key').value = c.lkKey || '';
+  document.getElementById('cfg-lk-secret').value = c.lkSecret || '';
+  document.getElementById('cfg-openai').value = c.openai || '';
+  document.getElementById('cfg-deepgram').value = c.deepgram || '';
+  document.getElementById('cfg-cartesia').value = c.cartesia || '';
+  document.getElementById('cfg-prom').value = c.promUrl || '';
+  document.getElementById('cfg-redis').value = c.redisUrl || '';
+  document.getElementById('cfg-mode').value = c.mode || 'simulation';
+}
+
+function openSettings() {
+  populateSettingsForm();
+  document.getElementById('settings-modal').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal').classList.remove('open');
+}
+
+function saveSettings() {
+  const cfg = {
+    lkUrl: document.getElementById('cfg-lk-url').value.trim(),
+    lkKey: document.getElementById('cfg-lk-key').value.trim(),
+    lkSecret: document.getElementById('cfg-lk-secret').value.trim(),
+    openai: document.getElementById('cfg-openai').value.trim(),
+    deepgram: document.getElementById('cfg-deepgram').value.trim(),
+    cartesia: document.getElementById('cfg-cartesia').value.trim(),
+    promUrl: document.getElementById('cfg-prom').value.trim(),
+    redisUrl: document.getElementById('cfg-redis').value.trim(),
+    mode: document.getElementById('cfg-mode').value,
+  };
+  saveConfig(cfg);
+  mode = cfg.mode;
+  closeSettings();
+  logEvent('settings', 'Configuration saved');
+
+  // Update tags
+  const tagClass = mode === 'live' ? 'live' : 'sim';
+  const tagText = mode === 'live' ? 'live' : 'sim';
+  document.querySelectorAll('.tag').forEach(t => { t.className = 'tag ' + tagClass; t.textContent = tagText; });
+
+  if (connected) { disconnect(); }
+}
+
+function clearConfig() {
+  localStorage.removeItem(CFG_KEY);
+  populateSettingsForm();
+  logEvent('settings', 'All configuration cleared');
+}
+
+// ===== Connection =====
+async function toggleConnection() {
+  if (connected) { disconnect(); }
+  else { connect(); }
+}
+
+async function connect() {
+  const cfg = loadConfig();
+  mode = cfg.mode || 'simulation';
+
+  if (mode === 'live' && cfg.lkUrl && cfg.lkKey) {
+    logEvent('connect', `Connecting to LiveKit at ${cfg.lkUrl}...`);
+    try {
+      await connectLiveKit(cfg);
+    } catch (e) {
+      logEvent('error', `LiveKit connection failed: ${e.message}. Falling back to simulation.`);
+      mode = 'simulation';
+      startSimulation();
+    }
+  } else {
+    if (mode === 'live') {
+      logEvent('warn', 'Live mode requires LiveKit URL and API Key. Running simulation.');
+    }
+    mode = 'simulation';
+    startSimulation();
+  }
+
+  connected = true;
+  document.getElementById('conn-dot').classList.add('live');
+  document.getElementById('conn-label').textContent = mode === 'live' ? 'Connected (Live)' : 'Connected (Simulation)';
+  document.getElementById('conn-label').style.color = 'var(--green)';
+  document.getElementById('connect-btn').textContent = 'Disconnect';
+  document.getElementById('connect-btn').classList.remove('primary');
+  document.getElementById('connect-btn').classList.add('danger');
+
+  const tagClass = mode === 'live' ? 'live' : 'sim';
+  const tagText = mode === 'live' ? 'live' : 'sim';
+  document.querySelectorAll('.tag').forEach(t => { t.className = 'tag ' + tagClass; t.textContent = tagText; });
+}
+
+function disconnect() {
+  connected = false;
+  if (simInterval) { clearInterval(simInterval); simInterval = null; }
+  if (lkRoom) { lkRoom.disconnect(); lkRoom = null; }
+
+  document.getElementById('conn-dot').classList.remove('live');
+  document.getElementById('conn-label').textContent = 'Disconnected';
+  document.getElementById('conn-label').style.color = '';
+  document.getElementById('connect-btn').textContent = 'Connect';
+  document.getElementById('connect-btn').classList.add('primary');
+  document.getElementById('connect-btn').classList.remove('danger');
+  logEvent('disconnect', 'Dashboard disconnected');
+}
+
+// ===== LiveKit Live Mode =====
+async function connectLiveKit(cfg) {
+  // In live mode, we'd monitor rooms via LiveKit server API.
+  // Since this is a static page, we use the JS SDK to connect to a monitor room
+  // and the LiveKit HTTP API to list rooms.
+  logEvent('livekit', 'Live mode active — polling LiveKit API for room data');
+
+  // Poll rooms via LiveKit REST API (requires CORS headers on the server)
+  const pollRooms = async () => {
+    try {
+      const resp = await fetch(cfg.lkUrl.replace('wss://', 'https://').replace('ws://', 'http://') + '/twirp/livekit.RoomService/ListRooms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + cfg.lkKey,
+        },
+        body: '{}',
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        updateFromLiveRooms(data.rooms || []);
+      }
+    } catch (e) {
+      // Silently fall through — CORS may block this from a static page
+    }
+  };
+
+  simInterval = setInterval(pollRooms, 3000);
+  await pollRooms();
+}
+
+function updateFromLiveRooms(rooms) {
+  const activeCalls = rooms.filter(r => r.num_participants > 0);
+  document.getElementById('s-active').textContent = activeCalls.length;
+  // Update table with real room data
+  const tbody = document.getElementById('calls-tbody');
+  if (activeCalls.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">No active calls</td></tr>';
+    return;
+  }
+  tbody.innerHTML = activeCalls.map(r => `
+    <tr>
+      <td><span class="pdot on"></span></td>
+      <td class="mono">${r.name}</td>
+      <td>${r.num_participants} participants</td>
+      <td class="mono">--</td>
+      <td class="mono">--</td>
+      <td>${formatDuration(Math.floor((Date.now()/1000) - r.creation_time))}</td>
+      <td><span class="badge active">active</span></td>
+    </tr>
+  `).join('');
+}
+
+// ===== Simulation Mode =====
+const callerPool = [
+  '+1 (415) 555-0142','+1 (212) 555-0198','+1 (310) 555-0267','+1 (617) 555-0331',
+  '+1 (503) 555-0419','+1 (702) 555-0584','+1 (312) 555-0673','+1 (404) 555-0752',
+  '+1 (206) 555-0841','+1 (305) 555-0936','+1 (512) 555-1024','+1 (303) 555-1118',
+  '+1 (720) 555-1203','+1 (480) 555-1297','+1 (619) 555-1382','+1 (704) 555-1476',
+  '+1 (602) 555-1561','+1 (813) 555-1655','+1 (469) 555-1740','+1 (615) 555-1834',
+  '+1 (971) 555-1929','+1 (801) 555-2013','+1 (916) 555-2108','+1 (651) 555-2202',
+  '+1 (505) 555-2297','+1 (918) 555-2381','+1 (402) 555-2476','+1 (808) 555-2570',
+];
+const workerPool = ['worker-a1b2','worker-c3d4','worker-e5f6','worker-g7h8','worker-i9j0'];
+
+function startSimulation() {
+  simCalls = [];
+  simTimer = 0;
+  simTotalCalls = 0;
+  simFailures = 0;
+  latencyHistory = [];
+  logEvent('sim', 'Simulation started — ramping up to 25 concurrent calls');
+
+  simInterval = setInterval(simTick, 700);
+}
+
+function simTick() {
+  simTimer++;
+
+  // Ramp up calls
+  if (simTimer <= 40 && simCalls.filter(c => c.active).length < 25 && Math.random() < 0.55) {
+    const lat = 320 + Math.random() * 220;
+    const call = {
+      id: 'call-' + (simTotalCalls + 1).toString().padStart(4, '0'),
+      caller: callerPool[simTotalCalls % callerPool.length],
+      worker: workerPool[Math.floor(Math.random() * workerPool.length)],
+      latency: lat,
+      startTick: simTimer,
+      active: true,
+    };
+    simCalls.push(call);
+    simTotalCalls++;
+
+    // Occasional setup failure
+    if (Math.random() < 0.02) {
+      call.active = false;
+      call.failed = true;
+      simFailures++;
+      logEvent('error', `Call ${call.id} setup failed — worker rejected (CPU > 90%)`);
+    } else {
+      logEvent('call', `${call.id} connected from ${call.caller} → ${call.worker}`);
+    }
+  }
+
+  // End some calls after they've been active a while
+  simCalls.forEach(c => {
+    if (c.active && (simTimer - c.startTick) > 20 && Math.random() < 0.06) {
+      c.active = false;
+      logEvent('call', `${c.id} ended (${formatDuration(Math.floor((simTimer - c.startTick) * 0.7))})`);
+    }
+  });
+
+  // Replace ended calls to maintain volume
+  if (simTimer > 25 && simCalls.filter(c => c.active).length < 18 && Math.random() < 0.4) {
+    const lat = 320 + Math.random() * 220;
+    const call = {
+      id: 'call-' + (simTotalCalls + 1).toString().padStart(4, '0'),
+      caller: callerPool[simTotalCalls % callerPool.length],
+      worker: workerPool[Math.floor(Math.random() * workerPool.length)],
+      latency: lat,
+      startTick: simTimer,
+      active: true,
+    };
+    simCalls.push(call);
+    simTotalCalls++;
+    logEvent('call', `${call.id} connected from ${call.caller} → ${call.worker}`);
+  }
+
+  // Jitter latencies
+  simCalls.forEach(c => {
+    if (c.active) c.latency = Math.max(280, c.latency + (Math.random() - 0.48) * 40);
+  });
+
+  // Generate latency trace
+  if (simTimer % 3 === 0 && simCalls.some(c => c.active)) {
+    const vad = 35 + Math.random() * 30;
+    const stt = 120 + Math.random() * 60;
+    const llm = 150 + Math.random() * 100;
+    const tts = 70 + Math.random() * 60;
+    const net = 60 + Math.random() * 80;
+    latencyHistory.push({ vad, stt, llm, tts, net, total: vad+stt+llm+tts+net });
+    if (latencyHistory.length > 8) latencyHistory.shift();
+  }
+
+  updateDashboard();
+}
+
+function updateDashboard() {
+  const active = simCalls.filter(c => c.active);
+  const latencies = active.map(c => c.latency);
+  const avg = latencies.length ? latencies.reduce((a,b) => a+b,0) / latencies.length : 0;
+  const sorted = [...latencies].sort((a,b) => a-b);
+  const p95 = sorted.length ? sorted[Math.floor(sorted.length * 0.95)] : 0;
+  const mos = active.length ? (4.0 + Math.random() * 0.4) : 0;
+
+  document.getElementById('s-active').textContent = active.length;
+  document.getElementById('s-active-sub').textContent = `peak: ${Math.max(active.length, ...simCalls.map((c,i,arr) => arr.filter(x => x.startTick <= c.startTick && (x.active || x.startTick + 20 > c.startTick)).length))} concurrent`;
+  document.getElementById('s-latency').textContent = avg ? Math.round(avg) + 'ms' : '--';
+  document.getElementById('s-latency').style.color = avg && avg < 600 ? 'var(--green)' : avg ? 'var(--red)' : '';
+  document.getElementById('s-p95').textContent = p95 ? Math.round(p95) + 'ms' : '--';
+  document.getElementById('s-mos').textContent = mos ? mos.toFixed(1) : '--';
+  document.getElementById('s-mos-sub').textContent = mos >= 4.0 ? 'Excellent' : mos >= 3.5 ? 'Good' : 'Fair';
+  document.getElementById('s-total').textContent = simTotalCalls;
+  const failRate = simTotalCalls > 0 ? (simFailures / simTotalCalls * 100) : 0;
+  document.getElementById('s-fail').textContent = failRate.toFixed(1) + '%';
+  document.getElementById('s-fail').style.color = failRate > 5 ? 'var(--red)' : failRate > 2 ? 'var(--yellow)' : 'var(--green)';
+
+  // Calls table
+  const tbody = document.getElementById('calls-tbody');
+  if (active.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">No active calls</td></tr>';
+  } else {
+    tbody.innerHTML = active.slice(-20).reverse().map(c => {
+      const dur = Math.floor((simTimer - c.startTick) * 0.7);
+      const latC = c.latency < 500 ? 'var(--green)' : c.latency < 600 ? 'var(--yellow)' : 'var(--red)';
+      return `<tr>
+        <td><span class="pdot on"></span></td>
+        <td class="mono">${c.id}</td>
+        <td>${c.caller}</td>
+        <td class="mono">${c.worker}</td>
+        <td class="mono" style="color:${latC}">${Math.round(c.latency)}ms</td>
+        <td class="mono">${formatDuration(dur)}</td>
+        <td><span class="badge active">active</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Latency breakdown
+  if (latencyHistory.length > 0) {
+    const lbody = document.getElementById('lat-body');
+    lbody.innerHTML = latencyHistory.map((l, i) => {
+      const t = l.total;
+      return `<div class="lat-bar-row">
+        <div class="lat-label">T-${latencyHistory.length - i}</div>
+        <div class="lat-track">
+          <div class="lat-seg vad" style="width:${l.vad/t*100}%">${Math.round(l.vad)}</div>
+          <div class="lat-seg stt" style="width:${l.stt/t*100}%">${Math.round(l.stt)}</div>
+          <div class="lat-seg llm" style="width:${l.llm/t*100}%">${Math.round(l.llm)}</div>
+          <div class="lat-seg tts" style="width:${l.tts/t*100}%">${Math.round(l.tts)}</div>
+          <div class="lat-seg net" style="width:${l.net/t*100}%">${Math.round(l.net)}</div>
+        </div>
+        <div class="lat-total ${t < 600 ? 'pass' : 'fail'}">${Math.round(t)}ms</div>
+      </div>`;
+    }).join('') + `
+    <div class="lat-legend">
+      <div class="lat-legend-item"><div class="lat-legend-dot" style="background:#a16207"></div>VAD</div>
+      <div class="lat-legend-item"><div class="lat-legend-dot" style="background:#0891b2"></div>STT</div>
+      <div class="lat-legend-item"><div class="lat-legend-dot" style="background:#7c3aed"></div>LLM</div>
+      <div class="lat-legend-item"><div class="lat-legend-dot" style="background:#16a34a"></div>TTS</div>
+      <div class="lat-legend-item"><div class="lat-legend-dot" style="background:#4b5563"></div>NET</div>
+    </div>`;
+  }
+
+  // Worker health
+  const wg = document.getElementById('workers-grid');
+  const workerCounts = {};
+  workerPool.forEach(w => workerCounts[w] = 0);
+  active.forEach(c => { if (workerCounts[c.worker] !== undefined) workerCounts[c.worker]++; });
+  wg.innerHTML = Object.entries(workerCounts).map(([w, count]) => {
+    const load = Math.min(95, count * 12 + Math.random() * 15 + 10);
+    const color = load > 80 ? 'var(--red)' : load > 60 ? 'var(--yellow)' : 'var(--green)';
+    return `<div style="background:var(--bg);border-radius:8px;padding:12px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
+        <span class="mono">${w}</span>
+        <span style="color:${color}">${count} calls</span>
+      </div>
+      <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:${load}%;background:${color};border-radius:3px;transition:width .5s;"></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px;">CPU: ${load.toFixed(0)}%</div>
+    </div>`;
+  }).join('');
+}
+
+// ===== Conversation Demo =====
+let convoRunning = false;
+const convoScript = [
+  { type:'agent', text:"Hello! Thank you for calling ShopEase. My name is Alex. How can I help you today?", lat:'487ms' },
+  { type:'caller', text:"Hi, what's your refund policy?", delay:1200 },
+  { type:'agent', text:"Of course! Let me look that up for you.", lat:'312ms', delay:800 },
+  { type:'agent', text:"Our standard refund policy allows a full refund within 30 days of delivery. Items must be in original condition with tags attached. Refunds process in 5-7 business days after we receive the—", lat:'412ms', delay:1200, interrupted:true },
+  { type:'caller', text:"Wait — what about digital purchases?", delay:400, barge:true },
+  { type:'agent', text:"Great question! Digital downloads and gift cards are not eligible for refunds. But if you're having trouble with a digital purchase, I can help troubleshoot or find other options.", lat:'523ms', delay:1000 },
+  { type:'caller', text:"I actually want to cancel my subscription.", delay:1400 },
+  { type:'agent', text:"I understand. Before I process that, could you tell me what prompted it? I'd love to see if there's something we can do — maybe a discount or a plan that fits better?", lat:'451ms', delay:1200 },
+  { type:'caller', text:"No thanks, just cancel please.", delay:1000 },
+  { type:'agent', text:"Absolutely, I'll take care of that. Your subscription is cancelled — you'll have access through the end of your billing period. Anything else I can help with?", lat:'398ms', delay:1100 },
+];
+
+async function runConversation() {
+  if (convoRunning) return;
+  convoRunning = true;
+  const log = document.getElementById('conv-log');
+  log.innerHTML = '';
+
+  for (const step of convoScript) {
+    await sleep(step.delay || 800);
+    const el = document.createElement('div');
+    el.className = 'conv-msg ' + step.type;
+    if (step.interrupted) el.classList.add('interrupted');
+
+    let html = `<div class="role">${step.type === 'agent' ? 'Agent (Alex)' : 'Caller'}</div>`;
+    html += `<div class="body">${step.text}</div>`;
+    if (step.interrupted) html += `<span class="interrupt-tag">BARGE-IN</span>`;
+    if (step.lat) html += `<div class="timing">E2E: ${step.lat}</div>`;
+    if (step.barge) {
+      logEvent('barge-in', 'Caller interrupted agent — TTS cancelled, processing new input');
+    }
+
+    el.innerHTML = html;
+    log.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+  }
+  convoRunning = false;
+}
+
+// ===== Utilities =====
+function formatDuration(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return m + ':' + sec.toString().padStart(2, '0');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function logEvent(type, msg) {
+  const log = document.getElementById('event-log');
+  const colors = { system:'var(--blue)', call:'var(--green)', error:'var(--red)', warn:'var(--yellow)', sim:'var(--purple)', settings:'var(--cyan)', connect:'var(--green)', disconnect:'var(--muted)', livekit:'var(--blue)', 'barge-in':'var(--red)' };
+  const color = colors[type] || 'var(--muted)';
+  const time = new Date().toLocaleTimeString('en-US', { hour12:false });
+  const div = document.createElement('div');
+  div.innerHTML = `<span style="color:var(--muted)">${time}</span> <span style="color:${color}">[${type}]</span> ${msg}`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+  // Keep log manageable
+  while (log.children.length > 100) log.removeChild(log.firstChild);
+}
+
+function clearLog() {
+  document.getElementById('event-log').innerHTML = '';
+  logEvent('system', 'Log cleared');
+}
+
+// ===== Init =====
+const cfg = loadConfig();
+mode = cfg.mode || 'simulation';
+</script>
+</body>
+</html>
