@@ -19,6 +19,7 @@
     --cyan: #06b6d4;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     background: var(--bg);
@@ -573,11 +574,15 @@
       <div class="label">Failure Rate</div>
     </div>
   </div>
+  <div style="margin-top:32px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <a href="#demo-section" class="convo-btn primary" style="text-decoration:none;font-size:15px;padding:12px 28px;">View Live Demo</a>
+    <a href="#arch-section" class="convo-btn" style="text-decoration:none;font-size:15px;padding:12px 28px;">Architecture</a>
+  </div>
 </div>
 
 <div class="container">
 
-  <div class="section">
+  <div class="section" id="arch-section">
     <h2>System Architecture</h2>
     <p class="subtitle">End-to-end call flow from PSTN to AI-generated speech response</p>
     <div class="arch-diagram"><span class="hl">PSTN Caller</span> ──&gt; <span class="hl2">Twilio SIP Trunk</span> ──&gt; <span class="hl3">LiveKit SIP Bridge</span> ──&gt; <span class="hl">LiveKit SFU</span>
@@ -720,7 +725,7 @@
 
 </div>
 
-  <div class="section">
+  <div class="section" id="demo-section">
     <h2>Live Demo</h2>
     <p class="subtitle">Interactive simulations of the three core demo scenarios</p>
 
