@@ -4,6 +4,10 @@ Production-ready voice AI agent system handling **100 concurrent calls** with **
 
 Built with **Pipecat**, Deepgram STT/TTS, Groq Llama 3.1 8B, and SQLite.
 
+## Demo Video
+
+[Watch the full demo on Loom](https://www.loom.com/share/e0f3ae24367841b58b31b2d53a222e5d) — single call with barge-in, live metrics, KB lookups, SQLite CRUD, and 100 concurrent calls load test.
+
 ## Quick Start
 
 ```bash
