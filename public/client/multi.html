@@ -139,9 +139,9 @@ async function runTest() {
               batchOk++;
               var num = c.call_id + 1;
               var latColor = c.latency_ms < 600 ? 'var(--green)' : 'var(--yellow)';
-              var resp = (c.response || '').substring(0, 60);
+              var preview = (c.response || '').substring(0, 60);
               addLog(
-                '&#10003; #' + num + ' <span style="color:var(--muted)">"' + c.prompt + '"</span> &rarr; <span style="color:' + latColor + '">' + c.latency_ms + 'ms</span> (LLM ' + (c.llm_ms||'?') + 'ms) ' + resp
+                '&#10003; #' + num + ' <span style="color:var(--muted)">"' + c.prompt + '"</span> &rarr; <span style="color:' + latColor + '">' + c.latency_ms + 'ms</span> (LLM ' + (c.llm_ms||'?') + 'ms) ' + preview
               );
             } else {
               batchFail++;
