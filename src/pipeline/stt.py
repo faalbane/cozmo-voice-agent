@@ -2,7 +2,7 @@
 
 import os
 
-from pipecat.services.deepgram import DeepgramSTTService
+from pipecat.services.deepgram.stt import DeepgramSTTService
 
 
 def create_stt() -> DeepgramSTTService:

@@ -11,14 +11,15 @@ import os
 import time
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer
+from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.frames.frames import EndFrame, LLMMessagesFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
-from pipecat.services.cartesia import CartesiaTTSService
-from pipecat.services.deepgram import DeepgramSTTService
-from pipecat.services.openai import OpenAILLMService
+from pipecat.services.cartesia.tts import CartesiaTTSService
+from pipecat.services.deepgram.stt import DeepgramSTTService
+from pipecat.services.openai.llm import OpenAILLMService
 
 from src.prompts.system_prompt import SYSTEM_PROMPT
 from src.tools.knowledge_lookup import register_knowledge_tools
@@ -143,13 +144,13 @@ async def create_agent_pipeline(transport, call_id: str = "local"):
 
 async def run_websocket_agent(host: str = "0.0.0.0", port: int = 8765):
     """Run the agent with a WebSocket transport (local dev / web demo)."""
-    from pipecat.transports.network.websocket_server import (
-        WebSocketServerParams,
-        WebSocketServerTransport,
+    from pipecat.transports.websocket.server import (
+        WebsocketServerParams,
+        WebsocketServerTransport,
     )
 
-    transport = WebSocketServerTransport(
-        params=WebSocketServerParams(
+    transport = WebsocketServerTransport(
+        params=WebsocketServerParams(
             host=host,
             port=port,
             audio_in_enabled=True,
@@ -157,7 +158,7 @@ async def run_websocket_agent(host: str = "0.0.0.0", port: int = 8765):
             add_wav_header=True,
             vad_enabled=True,
             vad_analyzer=SileroVADAnalyzer(
-                params=SileroVADAnalyzer.VADParams(
+                params=VADParams(
                     min_volume=0.4,
                     stop_secs=0.5,
                 )
@@ -186,7 +187,7 @@ async def run_daily_agent(room_url: str, token: str, call_id: str = "daily"):
             audio_out_enabled=True,
             vad_enabled=True,
             vad_analyzer=SileroVADAnalyzer(
-                params=SileroVADAnalyzer.VADParams(
+                params=VADParams(
                     min_volume=0.4,
                     stop_secs=0.5,
                 )

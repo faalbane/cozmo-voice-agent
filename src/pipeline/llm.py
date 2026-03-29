@@ -2,7 +2,7 @@
 
 import os
 
-from pipecat.services.openai import OpenAILLMService
+from pipecat.services.openai.llm import OpenAILLMService
 
 
 def create_llm() -> OpenAILLMService:

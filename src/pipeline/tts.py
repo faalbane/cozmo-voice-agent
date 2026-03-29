@@ -2,7 +2,7 @@
 
 import os
 
-from pipecat.services.cartesia import CartesiaTTSService
+from pipecat.services.cartesia.tts import CartesiaTTSService
 
 
 def create_tts() -> CartesiaTTSService:
