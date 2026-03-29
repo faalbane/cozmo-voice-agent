@@ -12,7 +12,7 @@ import time
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
-from pipecat.frames.frames import EndFrame, LLMMessagesFrame
+from pipecat.frames.frames import EndFrame, LLMMessagesFrame, TTSSpeakFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
@@ -105,23 +105,16 @@ async def create_agent_pipeline(transport, call_id: str = "local"):
         except Exception as e:
             logger.debug(f"Metrics recording error: {e}")
 
-    # --- Send initial greeting ---
+    # --- Send initial greeting directly via TTS (skips LLM for instant response) ---
+    GREETING = "Hello! Thank you for calling ShopEase. My name is Alex. How can I help you today?"
+
     @transport.event_handler("on_first_participant_joined")
     async def on_first_participant(transport, participant):
         logger.info(f"Participant joined call {call_id}")
-        await task.queue_frames(
-            [
-                LLMMessagesFrame(
-                    messages=[
-                        *messages,
-                        {
-                            "role": "assistant",
-                            "content": "Hello! Thank you for calling ShopEase. My name is Alex. How can I help you today?",
-                        },
-                    ]
-                )
-            ]
-        )
+        # Send directly to TTS — no LLM round-trip needed for the greeting
+        await task.queue_frames([TTSSpeakFrame(text=GREETING)])
+        # Also add to context so LLM knows what it said
+        context.add_message({"role": "assistant", "content": GREETING})
 
     @transport.event_handler("on_participant_left")
     async def on_participant_left(transport, participant, reason):
@@ -148,6 +141,7 @@ async def run_websocket_agent(host: str = "0.0.0.0", port: int = 8765):
         WebsocketServerParams,
         WebsocketServerTransport,
     )
+    from pipecat.serializers.protobuf import ProtobufFrameSerializer
 
     transport = WebsocketServerTransport(
         params=WebsocketServerParams(
@@ -155,12 +149,15 @@ async def run_websocket_agent(host: str = "0.0.0.0", port: int = 8765):
             port=port,
             audio_in_enabled=True,
             audio_out_enabled=True,
-            add_wav_header=True,
+            add_wav_header=False,
+            serializer=ProtobufFrameSerializer(),
             vad_enabled=True,
             vad_analyzer=SileroVADAnalyzer(
                 params=VADParams(
-                    min_volume=0.4,
-                    stop_secs=0.5,
+                    min_volume=0.3,
+                    start_secs=0.1,
+                    stop_secs=0.3,
+                    confidence=0.6,
                 )
             ),
             vad_audio_passthrough=True,
@@ -188,8 +185,10 @@ async def run_daily_agent(room_url: str, token: str, call_id: str = "daily"):
             vad_enabled=True,
             vad_analyzer=SileroVADAnalyzer(
                 params=VADParams(
-                    min_volume=0.4,
-                    stop_secs=0.5,
+                    min_volume=0.3,
+                    start_secs=0.1,
+                    stop_secs=0.3,
+                    confidence=0.6,
                 )
             ),
             vad_audio_passthrough=True,
