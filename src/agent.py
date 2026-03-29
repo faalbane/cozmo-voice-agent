@@ -12,12 +12,20 @@ import time
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
-from pipecat.frames.frames import EndFrame, LLMMessagesFrame, TTSSpeakFrame
+from pipecat.frames.frames import (
+    EndFrame,
+    Frame,
+    LLMMessagesFrame,
+    TTSSpeakFrame,
+    TranscriptionFrame,
+    TTSStartedFrame,
+)
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
-from pipecat.services.cartesia.tts import CartesiaTTSService
+from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
+from pipecat.services.deepgram.tts import DeepgramTTSService
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.groq import GroqLLMService
 
@@ -51,11 +59,11 @@ async def create_agent_pipeline(transport, call_id: str = "local"):
         name="groq-llm",
     )
 
-    # --- TTS ---
-    tts = CartesiaTTSService(
-        api_key=os.getenv("CARTESIA_API_KEY"),
-        voice_id="71a7ad14-091c-4e8e-a314-022ece01c121",  # British Lady
-        name="cartesia-tts",
+    # --- TTS (Deepgram Aura — ~200ms TTFB vs Cartesia ~850ms) ---
+    tts = DeepgramTTSService(
+        api_key=os.getenv("DEEPGRAM_API_KEY"),
+        voice="aura-asteria-en",
+        name="deepgram-tts",
     )
 
     # --- Conversation context ---
@@ -66,19 +74,39 @@ async def create_agent_pipeline(transport, call_id: str = "local"):
     # Knowledge is embedded in system prompt — no tool calling needed
     # (Groq/Llama doesn't reliably support function calling)
 
-    # --- Timing hooks for latency instrumentation ---
-    turn_start = [0.0]
+    # --- Server-side latency measurement processor ---
+    class LatencyMeasurer(FrameProcessor):
+        """Measures actual pipeline latency: transcription → first TTS output."""
 
-    @stt.event_handler("on_transcript")
-    async def on_transcript(transcript):
-        if transcript.strip():
-            turn_start[0] = time.monotonic()
+        def __init__(self):
+            super().__init__(name="latency-measurer")
+            self._turn_start = 0.0
+            self._waiting = False
+            self.latencies = []
+
+        async def process_frame(self, frame: Frame, direction: FrameDirection):
+            await super().process_frame(frame, direction)
+
+            if isinstance(frame, TranscriptionFrame) and frame.text.strip():
+                self._turn_start = time.monotonic()
+                self._waiting = True
+
+            if isinstance(frame, TTSStartedFrame) and self._waiting and self._turn_start > 0:
+                latency_ms = (time.monotonic() - self._turn_start) * 1000
+                self._waiting = False
+                self.latencies.append(latency_ms)
+                logger.info(f"[LATENCY] Pipeline E2E: {latency_ms:.0f}ms (turn {len(self.latencies)})")
+
+            await self.push_frame(frame, direction)
+
+    latency_measurer = LatencyMeasurer()
 
     # --- Build pipeline ---
     pipeline = Pipeline(
         [
             transport.input(),
             stt,
+            latency_measurer,
             context_aggregator.user(),
             llm,
             tts,
