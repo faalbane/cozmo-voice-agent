@@ -72,21 +72,6 @@ h1 { font-size:20px; text-align:center; margin-bottom:4px; }
   <button class="btn danger" onclick="endAll()">End All</button>
 </div>
 
-<!-- Spec Requirements Checklist -->
-<div style="display:flex;gap:12px;margin-bottom:20px;">
-  <div id="check-concurrent" class="check-box pending">
-    <div class="check-icon">&#9744;</div>
-    <div><div class="check-title">Multiple Concurrent Calls</div><div class="check-desc">Spin up 100 simultaneous sessions</div></div>
-  </div>
-  <div id="check-latency" class="check-box pending">
-    <div class="check-icon">&#9744;</div>
-    <div><div class="check-title">&lt;600ms Round-Trip</div><div class="check-desc">Show in single-call client metrics</div></div>
-  </div>
-  <div id="check-bargein" class="check-box pending">
-    <div class="check-icon">&#9744;</div>
-    <div><div class="check-title">Barge-In (Interruption)</div><div class="check-desc">Interrupt agent mid-sentence</div></div>
-  </div>
-</div>
 
 <div class="stats-bar">
   <div class="stat-item"><div class="stat-val green" id="s-active">0</div><div class="stat-lbl">Active Calls</div></div>
