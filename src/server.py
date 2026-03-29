@@ -104,7 +104,7 @@ async def load_test_stream(count: int = 100):
 
     async def generate():
         all_results = []
-        concurrency = 10
+        concurrency = 5
 
         for batch_start in range(0, count, concurrency):
             batch_end = min(batch_start + concurrency, count)
@@ -140,6 +140,7 @@ async def load_test_stream(count: int = 100):
                 "done": len(all_results) >= count,
             }
             yield f"data: {_json.dumps(update)}\n\n"
+            await asyncio.sleep(0.5)  # Pace batches to avoid rate limits
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 

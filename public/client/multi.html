@@ -130,21 +130,27 @@ async function runTest() {
           document.getElementById('s-target').className = 'val ' + (data.target_600ms ? 'green' : 'red');
         }
 
-        // Log each call from this batch
+        // Log only successful calls, summarize failures
         if (data.batch) {
+          var batchOk = 0, batchFail = 0;
           for (var bi = 0; bi < data.batch.length; bi++) {
             var c = data.batch[bi];
-            var num = c.call_id + 1;
-            var latColor = c.latency_ms < 600 ? 'var(--green)' : 'var(--red)';
-            var icon = c.status === 'completed' ? '&#10003;' : '&#10007;';
-            var respPreview = (c.response || c.error || '').substring(0, 70);
-            addLog(
-              icon + ' Call #' + num + ' | "' + c.prompt + '" &rarr; <span style="color:' + latColor + '">' + c.latency_ms + 'ms</span> | ' + respPreview,
-              c.status === 'completed' ? 'var(--text)' : 'var(--red)'
-            );
+            if (c.status === 'completed') {
+              batchOk++;
+              var num = c.call_id + 1;
+              var latColor = c.latency_ms < 600 ? 'var(--green)' : 'var(--yellow)';
+              var resp = (c.response || '').substring(0, 60);
+              addLog(
+                '&#10003; #' + num + ' <span style="color:var(--muted)">"' + c.prompt + '"</span> &rarr; <span style="color:' + latColor + '">' + c.latency_ms + 'ms</span> (LLM ' + (c.llm_ms||'?') + 'ms) ' + resp
+              );
+            } else {
+              batchFail++;
+            }
           }
-          addLog('Batch complete: ' + data.progress + '/' + data.total + ' | avg ' + data.avg_latency_ms + 'ms | failed ' + data.failed, 'var(--muted)');
-          addLog('', '');
+          var summary = 'Batch ' + data.progress + '/' + data.total + ' | ' + batchOk + ' ok';
+          if (batchFail > 0) summary += ', ' + batchFail + ' retrying';
+          summary += ' | avg ' + data.avg_latency_ms + 'ms';
+          addLog(summary, 'var(--muted)');
         }
 
         // Final

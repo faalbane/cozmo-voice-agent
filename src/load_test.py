@@ -92,7 +92,7 @@ async def run_single_call(call_id: int, prompt: str, groq_key: str, dg_key: str)
 
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 429 and attempt < 2:
-                await asyncio.sleep((attempt + 1) * 2)
+                await asyncio.sleep((attempt + 1) * 3)
                 continue
             result["status"] = "error"
             result["error"] = f"HTTP {e.response.status_code}"
@@ -105,7 +105,7 @@ async def run_single_call(call_id: int, prompt: str, groq_key: str, dg_key: str)
     return result
 
 
-async def run_load_test(count: int = 100, concurrency: int = 10) -> dict:
+async def run_load_test(count: int = 100, concurrency: int = 5) -> dict:
     """Run N concurrent real API calls and return aggregate results."""
     logger.info(f"Starting load test: {count} calls, {concurrency} concurrent")
 
