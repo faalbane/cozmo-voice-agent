@@ -34,3 +34,4 @@ tests/load/results/
 Thumbs.db
 *.pdf
 .firebase/
+public/client/node_modules/
