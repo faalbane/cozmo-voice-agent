@@ -42,6 +42,15 @@ p { color:var(--muted); font-size:14px; margin-bottom:32px; line-height:1.6; }
 .t-line .role { font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; }
 .t-line .role.user { color:var(--blue); }
 .t-line .role.bot { color:var(--green); }
+.t-line.typing .dots span {
+  animation: blink 1.2s infinite;
+  font-size: 18px;
+  letter-spacing: 2px;
+  color: var(--muted);
+}
+.t-line.typing .dots span:nth-child(2) { animation-delay: 0.2s; }
+.t-line.typing .dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%,60%,100%{opacity:0.2} 30%{opacity:1} }
 </style>
 </head>
 <body>

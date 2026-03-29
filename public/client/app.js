@@ -27,8 +27,27 @@ function addLine(role, text) {
 // Get or create the current streaming bot line
 let currentBotLine = null;
 let currentBotText = '';
+let typingIndicator = null;
+
+function showTyping() {
+  if (typingIndicator) return;
+  if (transcriptEl.querySelector('[style]')) transcriptEl.innerHTML = '';
+  typingIndicator = document.createElement('div');
+  typingIndicator.className = 't-line typing';
+  typingIndicator.innerHTML = '<span class="role bot">bot:</span> <span class="dots"><span>.</span><span>.</span><span>.</span></span>';
+  transcriptEl.appendChild(typingIndicator);
+  transcriptEl.scrollTop = transcriptEl.scrollHeight;
+}
+
+function hideTyping() {
+  if (typingIndicator) {
+    typingIndicator.remove();
+    typingIndicator = null;
+  }
+}
 
 function streamBotToken(token) {
+  hideTyping();
   if (transcriptEl.querySelector('[style]')) transcriptEl.innerHTML = '';
 
   if (!currentBotLine) {
@@ -93,12 +112,14 @@ async function startCall() {
 
     client.on(RTVIEvent.Error, (err) => {
       console.error('RTVI error:', err);
-      setStatus('Error: ' + (err.message || err), 'error');
+      // Don't show non-critical errors to user
     });
 
     client.on(RTVIEvent.UserTranscript, (evt) => {
       if (evt.text && evt.final) {
+        finalizeBotLine();
         addLine('user', evt.text);
+        showTyping();
       }
     });
 
@@ -113,7 +134,7 @@ async function startCall() {
 
   } catch (e) {
     console.error('Connection failed:', e);
-    setStatus('Connection failed — ' + e.message, 'error');
+    setStatus('Connection failed — ' + (e?.message || JSON.stringify(e)), 'error');
   }
 }
 

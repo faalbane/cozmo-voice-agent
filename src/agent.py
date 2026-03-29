@@ -19,7 +19,7 @@ from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 from pipecat.services.cartesia.tts import CartesiaTTSService
 from pipecat.services.deepgram.stt import DeepgramSTTService
-from pipecat.services.openai.llm import OpenAILLMService
+from pipecat.services.groq import GroqLLMService
 
 from src.prompts.system_prompt import SYSTEM_PROMPT
 from src.tools.knowledge_lookup import register_knowledge_tools
@@ -45,10 +45,10 @@ async def create_agent_pipeline(transport, call_id: str = "local"):
     )
 
     # --- LLM ---
-    llm = OpenAILLMService(
-        api_key=os.getenv("OPENAI_API_KEY"),
-        model="gpt-4o-mini",
-        name="openai-llm",
+    llm = GroqLLMService(
+        api_key=os.getenv("GROQ_API_KEY"),
+        model="llama-3.1-8b-instant",
+        name="groq-llm",
     )
 
     # --- TTS ---
@@ -63,8 +63,8 @@ async def create_agent_pipeline(transport, call_id: str = "local"):
     context = OpenAILLMContext(messages=messages)
     context_aggregator = llm.create_context_aggregator(context)
 
-    # --- Register knowledge base tools ---
-    register_knowledge_tools(llm, context)
+    # Knowledge is embedded in system prompt — no tool calling needed
+    # (Groq/Llama doesn't reliably support function calling)
 
     # --- Timing hooks for latency instrumentation ---
     turn_start = [0.0]
@@ -156,7 +156,7 @@ async def run_websocket_agent(host: str = "0.0.0.0", port: int = 8765):
                 params=VADParams(
                     min_volume=0.3,
                     start_secs=0.1,
-                    stop_secs=0.3,
+                    stop_secs=0.15,
                     confidence=0.6,
                 )
             ),
@@ -187,7 +187,7 @@ async def run_daily_agent(room_url: str, token: str, call_id: str = "daily"):
                 params=VADParams(
                     min_volume=0.3,
                     start_secs=0.1,
-                    stop_secs=0.3,
+                    stop_secs=0.15,
                     confidence=0.6,
                 )
             ),

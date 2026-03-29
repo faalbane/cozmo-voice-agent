@@ -16490,7 +16490,24 @@ var require_app = __commonJS({
     }
     var currentBotLine = null;
     var currentBotText = "";
+    var typingIndicator = null;
+    function showTyping() {
+      if (typingIndicator) return;
+      if (transcriptEl.querySelector("[style]")) transcriptEl.innerHTML = "";
+      typingIndicator = document.createElement("div");
+      typingIndicator.className = "t-line typing";
+      typingIndicator.innerHTML = '<span class="role bot">bot:</span> <span class="dots"><span>.</span><span>.</span><span>.</span></span>';
+      transcriptEl.appendChild(typingIndicator);
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    }
+    function hideTyping() {
+      if (typingIndicator) {
+        typingIndicator.remove();
+        typingIndicator = null;
+      }
+    }
     function streamBotToken(token) {
+      hideTyping();
       if (transcriptEl.querySelector("[style]")) transcriptEl.innerHTML = "";
       if (!currentBotLine) {
         currentBotText = "";
@@ -16509,6 +16526,10 @@ var require_app = __commonJS({
         currentBotLine = null;
         currentBotText = "";
       }
+    }
+    function finalizeBotLine() {
+      currentBotLine = null;
+      currentBotText = "";
     }
     btn.addEventListener("click", () => {
       if (active) endCall();
@@ -16537,11 +16558,12 @@ var require_app = __commonJS({
         });
         client.on($c1b4da4af54f4fa1$export$6b4624d233c61fcb.Error, (err) => {
           console.error("RTVI error:", err);
-          setStatus("Error: " + (err.message || err), "error");
         });
         client.on($c1b4da4af54f4fa1$export$6b4624d233c61fcb.UserTranscript, (evt) => {
           if (evt.text && evt.final) {
+            finalizeBotLine();
             addLine("user", evt.text);
+            showTyping();
           }
         });
         client.on($c1b4da4af54f4fa1$export$6b4624d233c61fcb.BotTtsText, (evt) => {
@@ -16552,7 +16574,7 @@ var require_app = __commonJS({
         await client.connect({ wsUrl: url });
       } catch (e2) {
         console.error("Connection failed:", e2);
-        setStatus("Connection failed \u2014 " + e2.message, "error");
+        setStatus("Connection failed \u2014 " + (e2?.message || JSON.stringify(e2)), "error");
       }
     }
     function endCall() {
