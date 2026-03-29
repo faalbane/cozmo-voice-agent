@@ -31,7 +31,7 @@ let userSpeechEndTime = 0;
 let firstTokenReceived = false;
 let latencyHistory = [];     // Raw client-side measurements
 let pipelineHistory = [];    // Adjusted (minus transport overhead)
-const TRANSPORT_OVERHEAD_MS = 500; // Measured: RTVI protobuf WebSocket round-trip overhead
+const TRANSPORT_OVERHEAD_MS = 0; // Raw measurement — no deduction
 
 function updateMetrics() {
   if (!metricsEl || pipelineHistory.length === 0) return;

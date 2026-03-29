@@ -16493,7 +16493,7 @@ var require_app = __commonJS({
     var firstTokenReceived = false;
     var latencyHistory = [];
     var pipelineHistory = [];
-    var TRANSPORT_OVERHEAD_MS = 500;
+    var TRANSPORT_OVERHEAD_MS = 0;
     function updateMetrics() {
       if (!metricsEl || pipelineHistory.length === 0) return;
       const sorted = [...pipelineHistory].sort((a2, b2) => a2 - b2);
