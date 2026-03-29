@@ -60,8 +60,14 @@ h1 { font-size:20px; text-align:center; margin-bottom:4px; }
 </style>
 </head>
 <body>
-<h1>Concurrent Calls Demo</h1>
-<p class="sub">Demonstrates multiple simultaneous voice agent sessions via server mode</p>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+  <a href="/" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);text-decoration:none;font-size:13px;">← Single Call</a>
+  <div style="text-align:center;">
+    <h1 style="margin:0;">Concurrent Calls Demo</h1>
+    <p class="sub" style="margin:0;">Demonstrates multiple simultaneous voice agent sessions</p>
+  </div>
+  <div style="width:90px;"></div>
+</div>
 
 <div class="controls">
   <input id="server-url" value="http://localhost:8080" style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-family:monospace;font-size:12px;width:220px;">
