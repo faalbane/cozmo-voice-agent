@@ -16474,6 +16474,7 @@ var require_app = __commonJS({
     var btn = document.getElementById("call-btn");
     var statusEl = document.getElementById("status");
     var transcriptEl = document.getElementById("transcript");
+    var metricsEl = document.getElementById("metrics-panel");
     function setStatus(text, cls) {
       statusEl.textContent = text;
       statusEl.className = "status " + (cls || "");
@@ -16488,9 +16489,75 @@ var require_app = __commonJS({
       transcriptEl.scrollTop = transcriptEl.scrollHeight;
       return div;
     }
+    var userSpeechEndTime = 0;
+    var latencyHistory = [];
+    function recordLatency() {
+      if (userSpeechEndTime > 0) {
+        const e2e = performance.now() - userSpeechEndTime;
+        latencyHistory.push(e2e);
+        userSpeechEndTime = 0;
+        updateMetrics();
+        return e2e;
+      }
+      return 0;
+    }
+    function updateMetrics() {
+      if (!metricsEl || latencyHistory.length === 0) return;
+      const sorted = [...latencyHistory].sort((a2, b2) => a2 - b2);
+      const avg = sorted.reduce((a2, b2) => a2 + b2, 0) / sorted.length;
+      const p95 = sorted[Math.floor(sorted.length * 0.95)] || sorted[sorted.length - 1];
+      const min = sorted[0];
+      const max = sorted[sorted.length - 1];
+      const last = latencyHistory[latencyHistory.length - 1];
+      const avgSec = avg / 1e3;
+      let mos = 4.5 - avgSec * 2;
+      mos = Math.max(1, Math.min(4.5, mos));
+      const passClass = avg < 600 ? "pass" : "fail";
+      metricsEl.innerHTML = `
+    <div class="metrics-grid">
+      <div class="metric">
+        <div class="metric-val ${passClass}">${Math.round(last)}ms</div>
+        <div class="metric-lbl">Last E2E</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val ${passClass}">${Math.round(avg)}ms</div>
+        <div class="metric-lbl">Avg E2E</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val">${Math.round(p95)}ms</div>
+        <div class="metric-lbl">P95</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val">${mos.toFixed(1)}</div>
+        <div class="metric-lbl">Est. MOS</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val">${latencyHistory.length}</div>
+        <div class="metric-lbl">Turns</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val">${Math.round(min)}-${Math.round(max)}ms</div>
+        <div class="metric-lbl">Range</div>
+      </div>
+    </div>
+    <div class="latency-bar-container">
+      ${latencyHistory.slice(-10).map((l2, i2) => {
+        const pct = Math.min(100, l2 / 800 * 100);
+        const cls = l2 < 400 ? "fast" : l2 < 600 ? "ok" : "slow";
+        return `<div class="lat-row">
+          <span class="lat-idx">T${latencyHistory.length - 10 + i2 + 1}</span>
+          <div class="lat-track"><div class="lat-fill ${cls}" style="width:${pct}%"></div></div>
+          <span class="lat-ms">${Math.round(l2)}ms</span>
+        </div>`;
+      }).join("")}
+    </div>
+    <div class="target-line">Target: &lt;600ms avg | Status: <span class="${passClass}">${avg < 600 ? "PASSING" : "OVER TARGET"}</span></div>
+  `;
+    }
     var currentBotLine = null;
     var currentBotText = "";
     var typingIndicator = null;
+    var firstTokenReceived = false;
     function showTyping() {
       if (typingIndicator) return;
       if (transcriptEl.querySelector("[style]")) transcriptEl.innerHTML = "";
@@ -16508,6 +16575,10 @@ var require_app = __commonJS({
     }
     function streamBotToken(token) {
       hideTyping();
+      if (!firstTokenReceived && userSpeechEndTime > 0) {
+        const e2e = recordLatency();
+        firstTokenReceived = true;
+      }
       if (transcriptEl.querySelector("[style]")) transcriptEl.innerHTML = "";
       if (!currentBotLine) {
         currentBotText = "";
@@ -16538,10 +16609,10 @@ var require_app = __commonJS({
     async function startCall() {
       const url = document.getElementById("ws-url").value;
       setStatus("Connecting...", "");
+      latencyHistory = [];
+      if (metricsEl) metricsEl.innerHTML = '<div style="color:#6b7089;text-align:center;padding:12px;font-size:12px;">Metrics will appear after first response</div>';
       try {
-        const transport = new $7f42eda74f1b1632$export$de21836fc42c6f9c({
-          url
-        });
+        const transport = new $7f42eda74f1b1632$export$de21836fc42c6f9c({ url });
         client = new $364c127d152b1085$export$8f7f86a77535f7a3({
           transport,
           enableMic: true,
@@ -16564,6 +16635,8 @@ var require_app = __commonJS({
             finalizeBotLine();
             addLine("user", evt.text);
             showTyping();
+            userSpeechEndTime = performance.now();
+            firstTokenReceived = false;
           }
         });
         client.on($c1b4da4af54f4fa1$export$6b4624d233c61fcb.BotTtsText, (evt) => {

@@ -3,109 +3,107 @@
 ## Sequence Diagram
 
 ```
-Customer       Twilio        SIP Bridge      LiveKit         Agent Worker       External APIs
-(PSTN)        (SIP Trunk)    (livekit/sip)   (SFU)          (Python)           (Deepgram/OpenAI/Cartesia)
+Customer       Twilio        Daily.co        Pipecat           Agent Server       External APIs
+(PSTN)        (SIP Trunk)   (WebRTC)        Pipeline          (FastAPI)          (Deepgram/Groq/Cartesia)
    │               │              │              │               │                    │
    │  Dial Phone # │              │              │               │                    │
    │──────────────>│              │              │               │                    │
    │               │  SIP INVITE  │              │               │                    │
    │               │─────────────>│              │               │                    │
-   │               │              │  Create Room │               │                    │
-   │               │              │─────────────>│               │                    │
-   │               │              │              │  Dispatch Job │                    │
-   │               │              │              │──────────────>│                    │
-   │               │              │              │               │                    │
-   │               │              │  200 OK      │  Accept Job   │                    │
-   │               │  200 OK      │<─────────────│<──────────────│                    │
+   │               │              │  POST /calls │               │                    │
+   │               │              │─────────────────────────────>│                    │
+   │               │              │              │  Create       │                    │
+   │               │              │              │  Pipeline     │                    │
+   │               │              │              │<──────────────│                    │
+   │               │  200 OK      │              │               │                    │
    │  Call Connected│<────────────│              │               │                    │
    │<──────────────│              │              │               │                    │
    │               │              │              │               │                    │
-   │               │         RTP Audio           │  Subscribe    │                    │
-   │  ═══════════════════════════════════════════>│  to caller    │                    │
-   │               │              │              │  audio track  │                    │
-   │               │              │              │               │                    │
-   │               │              │              │  Agent joins  │                    │
-   │               │              │              │<──────────────│                    │
+   │               │         Audio Stream        │               │                    │
+   │  ═══════════════════════════>│══════════════>│              │                    │
+   │               │              │              │  Pipeline     │                    │
+   │               │              │              │  starts       │                    │
    │               │              │              │               │                    │
    │               │              │              │  Greeting TTS │  TTS: "Hello..."   │
-   │               │              │              │<──────────────│───────────────────>│
-   │  ◄══════ Agent Audio ═══════════════════════│               │<───────────────────│
+   │               │              │◄═════════════│──────────────────────────────────>│
+   │  ◄══════ Agent Audio ════════│              │               │<──────────────────│
    │               │              │              │               │   (streaming audio)│
    │               │              │              │               │                    │
    ║  CONVERSATIONAL LOOP:        │              │               │                    │
    ║               │              │              │               │                    │
    │  Customer speaks             │              │               │                    │
-   │  ═══════════════════════════════════════════>│               │                    │
+   │  ═══════════════════════════>│══════════════>│              │                    │
    │               │              │              │  Audio frames │                    │
-   │               │              │              │──────────────>│                    │
+   │               │              │              │  into pipeline│                    │
    │               │              │              │               │                    │
-   │               │              │              │     ┌─────────┴────────────┐       │
-   │               │              │              │     │ 1. VAD: Detect       │       │
-   │               │              │              │     │    speech start/end  │       │
-   │               │              │              │     │    (~50ms, local)    │       │
-   │               │              │              │     └──────────┬───────────┘       │
-   │               │              │              │               │                    │
-   │               │              │              │               │  2. STT (streaming)│
-   │               │              │              │               │───────────────────>│
-   │               │              │              │               │  Transcript        │
-   │               │              │              │               │<───────────────────│
-   │               │              │              │               │  (~150ms)          │
-   │               │              │              │               │                    │
-   │               │              │              │     ┌─────────┴────────────┐       │
-   │               │              │              │     │ 3. LLM: Generate     │       │
-   │               │              │              │     │    response          │───────>│
-   │               │              │              │     │    (may call KB tool)│       │
-   │               │              │              │     │    (~200ms TTFT)     │<──────│
-   │               │              │              │     └──────────┬───────────┘       │
-   │               │              │              │               │                    │
-   │               │              │              │               │  4. TTS (streaming)│
-   │               │              │              │               │───────────────────>│
-   │               │              │              │               │  Audio chunks      │
-   │               │              │              │  Publish audio│<───────────────────│
-   │  ◄══════ Agent Audio ═══════════════════════│<──────────────│  (~100ms TTFB)     │
+   │               │              │     ┌────────┴─────────────┐ │                    │
+   │               │              │     │ 1. Silero VAD:       │ │                    │
+   │               │              │     │    Detect speech     │ │                    │
+   │               │              │     │    start/end         │ │                    │
+   │               │              │     │    (~50ms, local)    │ │                    │
+   │               │              │     └─────────┬────────────┘ │                    │
+   │               │              │               │              │                    │
+   │               │              │               │  2. STT (streaming)               │
+   │               │              │               │──────────────────────────────────>│
+   │               │              │               │  Transcript (Deepgram Nova-2)     │
+   │               │              │               │<──────────────────────────────────│
+   │               │              │               │  (~150ms)    │                    │
+   │               │              │               │              │                    │
+   │               │              │     ┌─────────┴────────────┐ │                    │
+   │               │              │     │ 3. LLM: Generate     │ │                    │
+   │               │              │     │    response          │─────────────────────>│
+   │               │              │     │    (Groq Llama 3.1   │ │                    │
+   │               │              │     │     8B, ~50ms TTFT)  │<────────────────────│
+   │               │              │     └──────────┬───────────┘ │                    │
+   │               │              │               │              │                    │
+   │               │              │               │  4. TTS (streaming)               │
+   │               │              │               │──────────────────────────────────>│
+   │               │              │               │  Audio chunks (Cartesia Sonic)    │
+   │               │              │  Publish audio│<──────────────────────────────────│
+   │  ◄══════ Agent Audio ════════│◄═════════════│               │  (~100ms TTFB)    │
    │               │              │              │               │                    │
    ║  BARGE-IN SCENARIO:          │              │               │                    │
    ║               │              │              │               │                    │
    │  Customer speaks during TTS  │              │               │                    │
-   │  ═══════════════════════════════════════════>│               │                    │
-   │               │              │              │──────────────>│                    │
-   │               │              │              │     ┌─────────┴────────────┐       │
-   │               │              │              │     │ VAD detects speech   │       │
-   │               │              │              │     │ → Cancel TTS         │       │
-   │               │              │              │     │ → Process new input  │       │
-   │               │              │              │     └──────────┬───────────┘       │
-   │               │              │              │               │                    │
+   │  ═══════════════════════════>│══════════════>│              │                    │
+   │               │              │     ┌─────────┴────────────┐ │                    │
+   │               │              │     │ Silero VAD detects   │ │                    │
+   │               │              │     │ → Cancel TTS output  │ │                    │
+   │               │              │     │ → Process new input  │ │                    │
+   │               │              │     └──────────┬───────────┘ │                    │
+   │               │              │               │              │                    │
    ║  CALL END:                   │              │               │                    │
    ║               │              │              │               │                    │
    │  Hang up      │              │              │               │                    │
    │──────────────>│  BYE         │              │               │                    │
-   │               │─────────────>│  Remove      │               │                    │
-   │               │              │  participant │  Disconnect   │                    │
-   │               │              │─────────────>│──────────────>│                    │
-   │               │              │              │               │  Cleanup           │
-   │               │              │              │               │  (Redis, metrics)  │
+   │               │─────────────>│  Disconnect  │               │                    │
+   │               │              │─────────────>│  Pipeline     │                    │
+   │               │              │              │  cleanup      │                    │
+   │               │              │              │  (async task  │                    │
+   │               │              │              │   cancelled)  │                    │
 ```
 
 ## Latency Breakdown per Turn
 
 ```
-Total E2E Target: < 600ms
+Total E2E Target: < 400ms
 
 │◄─────────── End-to-End Latency ────────────────────────────────────►│
 │                                                                      │
-│  VAD        │    STT         │      LLM          │    TTS     │ Net │
-│  ~50ms      │    ~150ms      │      ~200ms       │    ~100ms  │~100ms│
-│─────────────│────────────────│───────────────────│────────────│──────│
-│  Speech     │  Streaming     │  Streaming        │  Streaming │ SFU │
-│  endpoint   │  transcription │  TTFT             │  TTFB      │ hop │
-│  detection  │  (Deepgram)    │  (GPT-4o-mini)    │  (Cartesia)│     │
+│  VAD        │    STT         │      LLM       │    TTS     │  Net   │
+│  ~50ms      │    ~150ms      │      ~50ms     │    ~100ms  │ ~50ms  │
+│─────────────│────────────────│────────────────│────────────│────────│
+│  Speech     │  Streaming     │  Streaming     │  Streaming │  WS /  │
+│  endpoint   │  transcription │  TTFT          │  TTFB      │ WebRTC │
+│  detection  │  (Deepgram     │  (Groq Llama   │  (Cartesia │  hop   │
+│  (Silero)   │   Nova-2)      │   3.1 8B)      │   Sonic)   │        │
 ```
 
 ## Control Plane vs Media Plane
 
 | Plane | Protocol | Path | Latency Impact |
 |---|---|---|---|
-| **Control** | HTTP/WebSocket | LiveKit API → Agent Worker | Job dispatch: ~50ms (one-time) |
-| **Media (inbound)** | RTP → WebRTC | Twilio → SIP Bridge → LiveKit SFU → Agent | ~20ms per hop |
-| **Media (outbound)** | WebRTC → RTP | Agent → LiveKit SFU → SIP Bridge → Twilio | ~20ms per hop |
-| **AI Pipeline** | HTTPS (streaming) | Agent → Deepgram/OpenAI/Cartesia | ~450ms total (streaming) |
+| **Control** | HTTP | POST /calls → creates Pipecat pipeline (async task) | Pipeline creation: ~10ms (one-time) |
+| **Media (dev)** | WebSocket | Browser ↔ Pipecat pipeline directly | ~50ms round-trip |
+| **Media (prod)** | WebRTC | Twilio → Daily.co → Pipecat pipeline | ~30ms per hop |
+| **AI Pipeline** | HTTPS (streaming) | Pipeline → Deepgram/Groq/Cartesia | ~350ms total (streaming) |

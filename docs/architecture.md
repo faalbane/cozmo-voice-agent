@@ -20,15 +20,15 @@
 │  │  Pipecat Pipeline (one per call, async task)                   │  │
 │  │                                                                │  │
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐  │  │
-│  │  │ Silero   │→ │ Deepgram │→ │  OpenAI  │→ │  Cartesia    │  │  │
-│  │  │ VAD      │  │ STT      │  │ GPT-4o-  │  │  TTS         │  │  │
-│  │  │ (local)  │  │ (stream) │  │ mini     │  │  (stream)    │  │  │
+│  │  │ Silero   │→ │ Deepgram │→ │  Groq    │→ │  Cartesia    │  │  │
+│  │  │ VAD      │  │ STT      │  │ Llama 3.1│  │  TTS         │  │  │
+│  │  │ (local)  │  │ (stream) │  │ 8B       │  │  (stream)    │  │  │
 │  │  └──────────┘  └──────────┘  └────┬─────┘  └──────────────┘  │  │
 │  │                                    │                           │  │
 │  │                              ┌─────▼──────┐                   │  │
 │  │                              │ Knowledge  │                   │  │
-│  │                              │ Lookup     │                   │  │
-│  │                              │ (LLM Tool) │                   │  │
+│  │                              │ (System    │                   │  │
+│  │                              │  Prompt)   │                   │  │
 │  │                              └─────┬──────┘                   │  │
 │  └────────────────────────────────────┼───────────────────────────┘  │
 │                                       │                              │
@@ -36,8 +36,9 @@
                                         │
 ┌───────────────────┐  ┌───────────────────┐  ┌───────────────────────┐
 │     ChromaDB      │  │      Redis        │  │  Prometheus + Grafana │
-│  (Knowledge Base) │  │  (Call State)     │  │  (Observability)      │
-└───────────────────┘  └───────────────────┘  └───────────────────────┘
+│  (available, not  │  │  (Call State)     │  │  (Observability)      │
+│   required)       │  └───────────────────┘  └───────────────────────┘
+└───────────────────┘
 ```
 
 ## Why Pipecat
@@ -49,7 +50,8 @@
 | **Built-in interruption** | `allow_interruptions=True` handles barge-in natively |
 | **Function calling** | LLM can call knowledge base tools mid-conversation |
 | **Simple scaling** | One async task per call, no subprocess overhead |
-| **Zero cloud lock-in** | Runs locally with just 3 API keys (Deepgram, OpenAI, Cartesia) |
+| **Zero cloud lock-in** | Runs locally with just 3 API keys (Deepgram, Groq, Cartesia) |
+| **Simple local dev** | No cloud account needed — `python server.py` and go |
 
 ## Scaling Model
 

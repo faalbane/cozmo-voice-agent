@@ -5,73 +5,141 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ShopEase — Talk to Agent</title>
 <style>
-:root { --bg:#0a0c10; --card:#171a22; --border:#252833; --text:#e4e7f0; --muted:#6b7089; --green:#22c55e; --red:#ef4444; --blue:#3b82f6; }
+:root { --bg:#0a0c10; --card:#171a22; --border:#252833; --text:#e4e7f0; --muted:#6b7089; --green:#22c55e; --red:#ef4444; --blue:#3b82f6; --yellow:#eab308; --purple:#a855f7; }
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; align-items:center; min-height:100vh; }
-.container { text-align:center; max-width:440px; padding:24px; }
-h1 { font-size:22px; margin-bottom:8px; }
-p { color:var(--muted); font-size:14px; margin-bottom:32px; line-height:1.6; }
+body { font-family:-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:24px; }
+.layout { display:grid; grid-template-columns:1fr 360px; gap:20px; max-width:1100px; margin:0 auto; }
+@media(max-width:800px) { .layout { grid-template-columns:1fr; } }
+
+/* Left panel — conversation */
+.call-panel { text-align:center; }
+.call-panel h1 { font-size:20px; margin-bottom:6px; }
+.call-panel .sub { color:var(--muted); font-size:13px; margin-bottom:20px; }
 .call-btn {
-  width:120px; height:120px; border-radius:50%; border:none;
-  font-size:40px; cursor:pointer; transition:all .2s;
+  width:100px; height:100px; border-radius:50%; border:none;
+  font-size:36px; cursor:pointer; transition:all .2s;
   display:flex; align-items:center; justify-content:center;
-  margin:0 auto 24px;
+  margin:0 auto 16px;
 }
 .call-btn.idle { background:var(--green); color:#fff; }
 .call-btn.idle:hover { transform:scale(1.05); background:#16a34a; }
 .call-btn.active { background:var(--red); color:#fff; animation:pulse 2s infinite; }
-@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)}50%{box-shadow:0 0 0 20px rgba(239,68,68,0)} }
-.status { font-size:14px; color:var(--muted); margin-bottom:16px; min-height:20px; }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)}50%{box-shadow:0 0 0 16px rgba(239,68,68,0)} }
+.status { font-size:13px; color:var(--muted); margin-bottom:12px; min-height:18px; }
 .status.connected { color:var(--green); }
 .status.error { color:var(--red); }
 .ws-input {
-  width:100%; padding:10px 14px; border-radius:8px;
+  width:100%; padding:8px 12px; border-radius:6px;
   border:1px solid var(--border); background:var(--card);
-  color:var(--text); font-size:13px; font-family:monospace;
+  color:var(--text); font-size:12px; font-family:monospace;
   text-align:center; margin-bottom:12px; outline:none;
 }
 .ws-input:focus { border-color:var(--blue); }
-.hint { font-size:11px; color:var(--muted); line-height:1.6; }
 .transcript {
-  margin-top:24px; padding:16px; background:var(--card);
-  border:1px solid var(--border); border-radius:12px;
-  text-align:left; min-height:100px; max-height:250px;
+  padding:14px; background:var(--card);
+  border:1px solid var(--border); border-radius:10px;
+  text-align:left; min-height:200px; max-height:400px;
   overflow-y:auto; font-size:13px; line-height:1.6;
 }
-.t-line { margin-bottom:6px; }
-.t-line .role { font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; }
+.t-line { margin-bottom:5px; }
+.t-line .role { font-weight:600; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; }
 .t-line .role.user { color:var(--blue); }
 .t-line .role.bot { color:var(--green); }
+.t-line .role.system { color:var(--muted); }
 .t-line.typing .dots span {
   animation: blink 1.2s infinite;
-  font-size: 18px;
-  letter-spacing: 2px;
-  color: var(--muted);
+  font-size:16px; letter-spacing:2px; color:var(--muted);
 }
-.t-line.typing .dots span:nth-child(2) { animation-delay: 0.2s; }
-.t-line.typing .dots span:nth-child(3) { animation-delay: 0.4s; }
+.t-line.typing .dots span:nth-child(2) { animation-delay:0.2s; }
+.t-line.typing .dots span:nth-child(3) { animation-delay:0.4s; }
 @keyframes blink { 0%,60%,100%{opacity:0.2} 30%{opacity:1} }
+
+/* Right panel — metrics */
+.metrics-side { }
+.metrics-side h2 { font-size:15px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.metrics-side h2 .tag { font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(34,197,94,0.12); color:var(--green); text-transform:uppercase; font-weight:700; letter-spacing:0.5px; }
+
+.metrics-grid {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:8px; margin-bottom:12px;
+}
+.metric {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:8px; padding:10px; text-align:center;
+}
+.metric-val {
+  font-size:20px; font-weight:700;
+  font-family:'SF Mono',monospace;
+}
+.metric-val.pass { color:var(--green); }
+.metric-val.fail { color:var(--red); }
+.metric-lbl {
+  font-size:9px; color:var(--muted);
+  text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;
+}
+
+.latency-bar-container { margin-bottom:10px; }
+.lat-row {
+  display:flex; align-items:center; gap:6px;
+  margin-bottom:3px; font-size:11px;
+}
+.lat-idx { color:var(--muted); width:24px; text-align:right; font-family:monospace; font-size:10px; }
+.lat-track {
+  flex:1; height:12px; background:var(--card);
+  border:1px solid var(--border); border-radius:3px; overflow:hidden;
+}
+.lat-fill {
+  height:100%; border-radius:2px; transition:width .3s;
+}
+.lat-fill.fast { background:var(--green); }
+.lat-fill.ok { background:var(--yellow); }
+.lat-fill.slow { background:var(--red); }
+.lat-ms {
+  font-family:monospace; font-size:11px; width:45px; text-align:right;
+}
+.target-line {
+  font-size:11px; color:var(--muted); padding:8px;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:6px; text-align:center;
+}
+.target-line .pass { color:var(--green); font-weight:700; }
+.target-line .fail { color:var(--red); font-weight:700; }
+
+.hint { font-size:10px; color:var(--muted); line-height:1.5; margin-top:12px; text-align:center; }
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>ShopEase Voice Agent</h1>
-  <p>Click the button to start a conversation with the AI support agent. Try asking about refund policies or say you want to cancel.</p>
+<div class="layout">
 
-  <input class="ws-input" id="ws-url" value="ws://localhost:8765" placeholder="WebSocket URL">
+  <!-- Left: Conversation -->
+  <div class="call-panel">
+    <h1>ShopEase Voice Agent</h1>
+    <p class="sub">AI customer support — ask about refunds, shipping, or try to cancel</p>
 
-  <button class="call-btn idle" id="call-btn">&#128222;</button>
+    <input class="ws-input" id="ws-url" value="ws://localhost:8765" placeholder="WebSocket URL">
+    <button class="call-btn idle" id="call-btn">&#128222;</button>
+    <div class="status" id="status">Ready — click to start</div>
 
-  <div class="status" id="status">Ready — click to start</div>
+    <div class="transcript" id="transcript">
+      <div style="color:var(--muted);text-align:center;">Conversation will appear here</div>
+    </div>
 
-  <div class="transcript" id="transcript">
-    <div style="color:var(--muted);text-align:center;">Conversation will appear here</div>
+    <div class="hint">
+      Start agent: <code style="color:var(--blue);">python run_client.py</code>
+    </div>
   </div>
 
-  <div class="hint" style="margin-top:12px;">
-    Uses your microphone. Start agent + client server:<br>
-    <code style="color:var(--blue);">python run_client.py</code>
+  <!-- Right: Metrics -->
+  <div class="metrics-side">
+    <h2>Latency & Quality <span class="tag">live</span></h2>
+    <div id="metrics-panel">
+      <div style="color:var(--muted);text-align:center;padding:20px;font-size:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;">
+        Metrics will appear after first response.<br>
+        Measures: user speech end → first bot audio.
+      </div>
+    </div>
   </div>
+
 </div>
 
 <script type="module" src="bundle.js"></script>

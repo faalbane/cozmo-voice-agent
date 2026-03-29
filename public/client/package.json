@@ -1,0 +1,20 @@
+{
+  "name": "client",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@pipecat-ai/client-js": "^1.7.0",
+    "@pipecat-ai/websocket-transport": "^1.6.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.4"
+  }
+}

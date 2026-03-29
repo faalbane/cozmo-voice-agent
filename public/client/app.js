@@ -7,6 +7,7 @@ let active = false;
 const btn = document.getElementById('call-btn');
 const statusEl = document.getElementById('status');
 const transcriptEl = document.getElementById('transcript');
+const metricsEl = document.getElementById('metrics-panel');
 
 function setStatus(text, cls) {
   statusEl.textContent = text;
@@ -24,10 +25,85 @@ function addLine(role, text) {
   return div;
 }
 
-// Get or create the current streaming bot line
+// ===== Latency Tracking =====
+let userSpeechEndTime = 0;
+let latencyHistory = [];
+
+function recordLatency() {
+  if (userSpeechEndTime > 0) {
+    const e2e = performance.now() - userSpeechEndTime;
+    latencyHistory.push(e2e);
+    userSpeechEndTime = 0;
+    updateMetrics();
+    return e2e;
+  }
+  return 0;
+}
+
+function updateMetrics() {
+  if (!metricsEl || latencyHistory.length === 0) return;
+
+  const sorted = [...latencyHistory].sort((a, b) => a - b);
+  const avg = sorted.reduce((a, b) => a + b, 0) / sorted.length;
+  const p95 = sorted[Math.floor(sorted.length * 0.95)] || sorted[sorted.length - 1];
+  const min = sorted[0];
+  const max = sorted[sorted.length - 1];
+  const last = latencyHistory[latencyHistory.length - 1];
+
+  // Estimate MOS from latency (simplified E-model)
+  const avgSec = avg / 1000;
+  let mos = 4.5 - (avgSec * 2);
+  mos = Math.max(1, Math.min(4.5, mos));
+
+  const passClass = avg < 600 ? 'pass' : 'fail';
+
+  metricsEl.innerHTML = `
+    <div class="metrics-grid">
+      <div class="metric">
+        <div class="metric-val ${passClass}">${Math.round(last)}ms</div>
+        <div class="metric-lbl">Last E2E</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val ${passClass}">${Math.round(avg)}ms</div>
+        <div class="metric-lbl">Avg E2E</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val">${Math.round(p95)}ms</div>
+        <div class="metric-lbl">P95</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val">${mos.toFixed(1)}</div>
+        <div class="metric-lbl">Est. MOS</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val">${latencyHistory.length}</div>
+        <div class="metric-lbl">Turns</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val">${Math.round(min)}-${Math.round(max)}ms</div>
+        <div class="metric-lbl">Range</div>
+      </div>
+    </div>
+    <div class="latency-bar-container">
+      ${latencyHistory.slice(-10).map((l, i) => {
+        const pct = Math.min(100, (l / 800) * 100);
+        const cls = l < 400 ? 'fast' : l < 600 ? 'ok' : 'slow';
+        return `<div class="lat-row">
+          <span class="lat-idx">T${latencyHistory.length - 10 + i + 1}</span>
+          <div class="lat-track"><div class="lat-fill ${cls}" style="width:${pct}%"></div></div>
+          <span class="lat-ms">${Math.round(l)}ms</span>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="target-line">Target: &lt;600ms avg | Status: <span class="${passClass}">${avg < 600 ? 'PASSING' : 'OVER TARGET'}</span></div>
+  `;
+}
+
+// ===== Streaming Bot Transcript =====
 let currentBotLine = null;
 let currentBotText = '';
 let typingIndicator = null;
+let firstTokenReceived = false;
 
 function showTyping() {
   if (typingIndicator) return;
@@ -48,6 +124,13 @@ function hideTyping() {
 
 function streamBotToken(token) {
   hideTyping();
+
+  // Record latency on first bot token after user speech
+  if (!firstTokenReceived && userSpeechEndTime > 0) {
+    const e2e = recordLatency();
+    firstTokenReceived = true;
+  }
+
   if (transcriptEl.querySelector('[style]')) transcriptEl.innerHTML = '';
 
   if (!currentBotLine) {
@@ -58,7 +141,6 @@ function streamBotToken(token) {
     transcriptEl.appendChild(currentBotLine);
   }
 
-  // Add space between tokens if needed
   if (currentBotText && !currentBotText.endsWith(' ') && !token.startsWith(' ')) {
     currentBotText += ' ';
   }
@@ -67,7 +149,6 @@ function streamBotToken(token) {
   currentBotLine.innerHTML = '<span class="role bot">bot:</span> ' + currentBotText;
   transcriptEl.scrollTop = transcriptEl.scrollHeight;
 
-  // Finalize on sentence-ending punctuation
   if (/[.!?]"?\s*$/.test(currentBotText.trim())) {
     currentBotLine = null;
     currentBotText = '';
@@ -79,6 +160,7 @@ function finalizeBotLine() {
   currentBotText = '';
 }
 
+// ===== Connection =====
 btn.addEventListener('click', () => {
   if (active) endCall();
   else startCall();
@@ -87,11 +169,11 @@ btn.addEventListener('click', () => {
 async function startCall() {
   const url = document.getElementById('ws-url').value;
   setStatus('Connecting...', '');
+  latencyHistory = [];
+  if (metricsEl) metricsEl.innerHTML = '<div style="color:#6b7089;text-align:center;padding:12px;font-size:12px;">Metrics will appear after first response</div>';
 
   try {
-    const transport = new WebSocketTransport({
-      url: url,
-    });
+    const transport = new WebSocketTransport({ url });
 
     client = new PipecatClient({
       transport,
@@ -112,7 +194,6 @@ async function startCall() {
 
     client.on(RTVIEvent.Error, (err) => {
       console.error('RTVI error:', err);
-      // Don't show non-critical errors to user
     });
 
     client.on(RTVIEvent.UserTranscript, (evt) => {
@@ -120,10 +201,12 @@ async function startCall() {
         finalizeBotLine();
         addLine('user', evt.text);
         showTyping();
+        // Start latency timer
+        userSpeechEndTime = performance.now();
+        firstTokenReceived = false;
       }
     });
 
-    // Stream bot tokens into the transcript in real-time
     client.on(RTVIEvent.BotTtsText, (evt) => {
       if (evt.text) {
         streamBotToken(evt.text);
