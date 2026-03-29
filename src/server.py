@@ -10,6 +10,7 @@ import os
 import uuid
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 
@@ -21,6 +22,7 @@ from src.resilience.recovery import get_health_status
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="ShopEase Voice Agent Server")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 # Track active call tasks
 active_calls: dict[str, asyncio.Task] = {}

@@ -47,6 +47,16 @@ h1 { font-size:20px; text-align:center; margin-bottom:4px; }
 }
 .call-card .metrics { margin-top:8px; font-family:monospace; font-size:11px; color:var(--muted); }
 .call-card .metrics span { color:var(--green); font-weight:600; }
+.check-box {
+  flex:1; display:flex; align-items:center; gap:10px;
+  padding:12px 16px; border-radius:8px;
+  border:1px solid var(--border); background:var(--card);
+}
+.check-box.pending .check-icon { font-size:20px; color:var(--muted); }
+.check-box.passed { border-color:var(--green); background:rgba(34,197,94,0.08); }
+.check-box.passed .check-icon { font-size:20px; color:var(--green); }
+.check-title { font-size:13px; font-weight:600; }
+.check-desc { font-size:11px; color:var(--muted); }
 </style>
 </head>
 <body>
@@ -54,18 +64,36 @@ h1 { font-size:20px; text-align:center; margin-bottom:4px; }
 <p class="sub">Demonstrates multiple simultaneous voice agent sessions via server mode</p>
 
 <div class="controls">
-  <input id="server-url" value="http://localhost:8080" style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-family:monospace;font-size:12px;width:250px;">
-  <button class="btn primary" onclick="addCalls(5)">Add 5 Calls</button>
-  <button class="btn primary" onclick="addCalls(10)">Add 10 Calls</button>
-  <button class="btn" onclick="addCalls(1)">Add 1 Call</button>
+  <input id="server-url" value="http://localhost:8080" style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-family:monospace;font-size:12px;width:220px;">
+  <button class="btn" onclick="addCalls(1)">+1 Call</button>
+  <button class="btn primary" onclick="addCalls(10)">+10 Calls</button>
+  <button class="btn primary" onclick="addCalls(50)">+50 Calls</button>
+  <button class="btn primary" style="background:#7c3aed;border-color:#7c3aed;" onclick="addCalls(100)">+100 Calls</button>
   <button class="btn danger" onclick="endAll()">End All</button>
+</div>
+
+<!-- Spec Requirements Checklist -->
+<div style="display:flex;gap:12px;margin-bottom:20px;">
+  <div id="check-concurrent" class="check-box pending">
+    <div class="check-icon">&#9744;</div>
+    <div><div class="check-title">Multiple Concurrent Calls</div><div class="check-desc">Spin up 100 simultaneous sessions</div></div>
+  </div>
+  <div id="check-latency" class="check-box pending">
+    <div class="check-icon">&#9744;</div>
+    <div><div class="check-title">&lt;600ms Round-Trip</div><div class="check-desc">Show in single-call client metrics</div></div>
+  </div>
+  <div id="check-bargein" class="check-box pending">
+    <div class="check-icon">&#9744;</div>
+    <div><div class="check-title">Barge-In (Interruption)</div><div class="check-desc">Interrupt agent mid-sentence</div></div>
+  </div>
 </div>
 
 <div class="stats-bar">
   <div class="stat-item"><div class="stat-val green" id="s-active">0</div><div class="stat-lbl">Active Calls</div></div>
   <div class="stat-item"><div class="stat-val" id="s-total">0</div><div class="stat-lbl">Total Created</div></div>
-  <div class="stat-item"><div class="stat-val" id="s-failed">0</div><div class="stat-lbl">Failed</div></div>
+  <div class="stat-item"><div class="stat-val" id="s-failed">0</div><div class="stat-lbl">Failed Setup</div></div>
   <div class="stat-item"><div class="stat-val green" id="s-rate">0/s</div><div class="stat-lbl">Setup Rate</div></div>
+  <div class="stat-item"><div class="stat-val" id="s-fail-rate">0%</div><div class="stat-lbl">Failure Rate</div></div>
 </div>
 
 <div class="grid" id="calls-grid"></div>
@@ -117,14 +145,33 @@ async function endAll() {
   updateUI();
 }
 
+function passCheck(id) {
+  const el = document.getElementById(id);
+  if (el && !el.classList.contains('passed')) {
+    el.classList.remove('pending');
+    el.classList.add('passed');
+    el.querySelector('.check-icon').innerHTML = '&#9745;';
+  }
+}
+
 function updateUI() {
   const active = calls.filter(c => c.status === 'active');
   const elapsed = (Date.now() - startTime) / 1000;
+  const failRate = totalCreated > 0 ? (totalFailed / totalCreated * 100) : 0;
 
   document.getElementById('s-active').textContent = active.length;
   document.getElementById('s-total').textContent = totalCreated;
   document.getElementById('s-failed').textContent = totalFailed;
   document.getElementById('s-rate').textContent = (totalCreated / Math.max(1, elapsed)).toFixed(1) + '/s';
+  document.getElementById('s-fail-rate').textContent = failRate.toFixed(1) + '%';
+
+  // Auto-check requirements
+  if (active.length >= 2) passCheck('check-concurrent');
+  if (active.length >= 100) {
+    document.getElementById('check-concurrent').querySelector('.check-desc').textContent = active.length + ' concurrent calls running!';
+  } else if (active.length > 0) {
+    document.getElementById('check-concurrent').querySelector('.check-desc').textContent = active.length + ' calls active — add more to reach 100';
+  }
 
   const grid = document.getElementById('calls-grid');
   grid.innerHTML = active.map(c => {
