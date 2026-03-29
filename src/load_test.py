@@ -30,15 +30,16 @@ TEST_PROMPTS = [
 ]
 
 
-async def run_single_call(call_id: int, prompt: str, groq_key: str, dg_key: str) -> dict:
-    """Run one call: Groq LLM → Deepgram TTS, measure real latency."""
+async def run_single_call(call_id: int, prompt: str, groq_key: str, dg_key: str, max_retries: int = 3) -> dict:
+    """Run one call: Groq LLM → Deepgram TTS, measure real latency. Retries on rate limit."""
     result = {"call_id": call_id, "prompt": prompt, "status": "pending", "latency_ms": 0, "response": ""}
 
-    try:
-        t_start = time.monotonic()
+    for attempt in range(max_retries):
+        try:
+            t_start = time.monotonic()
 
-        # 1. Real Groq LLM call
-        async with httpx.AsyncClient(timeout=15) as client:
+            # 1. Real Groq LLM call
+            async with httpx.AsyncClient(timeout=15) as client:
             llm_resp = await client.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
@@ -79,15 +80,25 @@ async def run_single_call(call_id: int, prompt: str, groq_key: str, dg_key: str)
         result["tts_ms"] = round(tts_ms, 1)
         result["response"] = response_text[:100]
 
-    except Exception as e:
-        result["status"] = "error"
-        result["error"] = str(e)[:100]
-        logger.error(f"Call {call_id} failed: {e}")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429 and attempt < max_retries - 1:
+                wait = (attempt + 1) * 2  # 2s, 4s, 6s backoff
+                logger.warning(f"Call {call_id} rate limited, retrying in {wait}s...")
+                await asyncio.sleep(wait)
+                continue
+            result["status"] = "error"
+            result["error"] = f"HTTP {e.response.status_code}"
+            break
+        except Exception as e:
+            result["status"] = "error"
+            result["error"] = str(e)[:100]
+            logger.error(f"Call {call_id} failed: {e}")
+            break
 
     return result
 
 
-async def run_load_test(count: int = 100, concurrency: int = 20) -> dict:
+async def run_load_test(count: int = 100, concurrency: int = 10) -> dict:
     """Run N concurrent real API calls and return aggregate results."""
     logger.info(f"Starting load test: {count} calls, {concurrency} concurrent")
 
