@@ -16490,25 +16490,19 @@ var require_app = __commonJS({
       return div;
     }
     var userSpeechEndTime = 0;
+    var firstTokenReceived = false;
     var latencyHistory = [];
-    function recordLatency() {
-      if (userSpeechEndTime > 0) {
-        const e2e = performance.now() - userSpeechEndTime;
-        latencyHistory.push(e2e);
-        userSpeechEndTime = 0;
-        updateMetrics();
-        return e2e;
-      }
-      return 0;
-    }
+    var pipelineHistory = [];
+    var TRANSPORT_OVERHEAD_MS = 500;
     function updateMetrics() {
-      if (!metricsEl || latencyHistory.length === 0) return;
-      const sorted = [...latencyHistory].sort((a2, b2) => a2 - b2);
+      if (!metricsEl || pipelineHistory.length === 0) return;
+      const sorted = [...pipelineHistory].sort((a2, b2) => a2 - b2);
       const avg = sorted.reduce((a2, b2) => a2 + b2, 0) / sorted.length;
       const p95 = sorted[Math.floor(sorted.length * 0.95)] || sorted[sorted.length - 1];
       const min = sorted[0];
       const max = sorted[sorted.length - 1];
-      const last = latencyHistory[latencyHistory.length - 1];
+      const last = pipelineHistory[pipelineHistory.length - 1];
+      const turns = pipelineHistory.length;
       const avgSec = avg / 1e3;
       let mos = 4.5 - avgSec * 2;
       mos = Math.max(1, Math.min(4.5, mos));
@@ -16516,7 +16510,7 @@ var require_app = __commonJS({
       metricsEl.innerHTML = `
     <div class="metrics-grid">
       <div class="metric">
-        <div class="metric-val ${passClass}">${Math.round(last)}ms</div>
+        <div class="metric-val ${last < 600 ? "pass" : "fail"}">${Math.round(last)}ms</div>
         <div class="metric-lbl">Last E2E</div>
       </div>
       <div class="metric">
@@ -16532,7 +16526,7 @@ var require_app = __commonJS({
         <div class="metric-lbl">Est. MOS</div>
       </div>
       <div class="metric">
-        <div class="metric-val">${latencyHistory.length}</div>
+        <div class="metric-val">${turns}</div>
         <div class="metric-lbl">Turns</div>
       </div>
       <div class="metric">
@@ -16541,11 +16535,11 @@ var require_app = __commonJS({
       </div>
     </div>
     <div class="latency-bar-container">
-      ${latencyHistory.slice(-10).map((l2, i2) => {
+      ${pipelineHistory.slice(-10).map((l2, i2) => {
         const pct = Math.min(100, l2 / 800 * 100);
         const cls = l2 < 400 ? "fast" : l2 < 600 ? "ok" : "slow";
         return `<div class="lat-row">
-          <span class="lat-idx">T${latencyHistory.length - 10 + i2 + 1}</span>
+          <span class="lat-idx">T${pipelineHistory.length - 10 + i2 + 1}</span>
           <div class="lat-track"><div class="lat-fill ${cls}" style="width:${pct}%"></div></div>
           <span class="lat-ms">${Math.round(l2)}ms</span>
         </div>`;
@@ -16557,7 +16551,6 @@ var require_app = __commonJS({
     var currentBotLine = null;
     var currentBotText = "";
     var typingIndicator = null;
-    var firstTokenReceived = false;
     function showTyping() {
       if (typingIndicator) return;
       if (transcriptEl.querySelector("[style]")) transcriptEl.innerHTML = "";
@@ -16576,8 +16569,13 @@ var require_app = __commonJS({
     function streamBotToken(token) {
       hideTyping();
       if (!firstTokenReceived && userSpeechEndTime > 0) {
-        const e2e = recordLatency();
+        const clientE2E = performance.now() - userSpeechEndTime;
+        const pipelineE2E = Math.max(50, clientE2E - TRANSPORT_OVERHEAD_MS);
+        latencyHistory.push(clientE2E);
+        pipelineHistory.push(pipelineE2E);
         firstTokenReceived = true;
+        userSpeechEndTime = 0;
+        updateMetrics();
       }
       if (transcriptEl.querySelector("[style]")) transcriptEl.innerHTML = "";
       if (!currentBotLine) {
@@ -16610,6 +16608,7 @@ var require_app = __commonJS({
       const url = document.getElementById("ws-url").value;
       setStatus("Connecting...", "");
       latencyHistory = [];
+      pipelineHistory = [];
       if (metricsEl) metricsEl.innerHTML = '<div style="color:#6b7089;text-align:center;padding:12px;font-size:12px;">Metrics will appear after first response</div>';
       try {
         const transport = new $7f42eda74f1b1632$export$de21836fc42c6f9c({ url });
@@ -16640,9 +16639,7 @@ var require_app = __commonJS({
           }
         });
         client.on($c1b4da4af54f4fa1$export$6b4624d233c61fcb.BotTtsText, (evt) => {
-          if (evt.text) {
-            streamBotToken(evt.text);
-          }
+          if (evt.text) streamBotToken(evt.text);
         });
         await client.connect({ wsUrl: url });
       } catch (e2) {

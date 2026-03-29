@@ -16,6 +16,7 @@ from pipecat.frames.frames import (
     EndFrame,
     Frame,
     LLMMessagesFrame,
+    OutputTransportMessageFrame,
     TTSSpeakFrame,
     TranscriptionFrame,
     TTSStartedFrame,
@@ -96,6 +97,25 @@ async def create_agent_pipeline(transport, call_id: str = "local"):
                 self._waiting = False
                 self.latencies.append(latency_ms)
                 logger.info(f"[LATENCY] Pipeline E2E: {latency_ms:.0f}ms (turn {len(self.latencies)})")
+
+                # Send latency to client via transport message
+                avg = sum(self.latencies) / len(self.latencies)
+                sorted_l = sorted(self.latencies)
+                p95 = sorted_l[int(len(sorted_l) * 0.95)] if len(sorted_l) > 1 else sorted_l[0]
+                await self.push_frame(OutputTransportMessageFrame(
+                    message={
+                        "type": "latency",
+                        "data": {
+                            "last": round(latency_ms),
+                            "avg": round(avg),
+                            "p95": round(p95),
+                            "min": round(sorted_l[0]),
+                            "max": round(sorted_l[-1]),
+                            "turns": len(self.latencies),
+                            "history": [round(l) for l in self.latencies[-10:]],
+                        },
+                    }
+                ), direction)
 
             await self.push_frame(frame, direction)
 

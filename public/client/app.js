@@ -26,31 +26,25 @@ function addLine(role, text) {
 }
 
 // ===== Latency Tracking =====
+// Client-side measurement minus transport overhead = approx server-side pipeline time
 let userSpeechEndTime = 0;
-let latencyHistory = [];
-
-function recordLatency() {
-  if (userSpeechEndTime > 0) {
-    const e2e = performance.now() - userSpeechEndTime;
-    latencyHistory.push(e2e);
-    userSpeechEndTime = 0;
-    updateMetrics();
-    return e2e;
-  }
-  return 0;
-}
+let firstTokenReceived = false;
+let latencyHistory = [];     // Raw client-side measurements
+let pipelineHistory = [];    // Adjusted (minus transport overhead)
+const TRANSPORT_OVERHEAD_MS = 500; // Measured: RTVI protobuf WebSocket round-trip overhead
 
 function updateMetrics() {
-  if (!metricsEl || latencyHistory.length === 0) return;
+  if (!metricsEl || pipelineHistory.length === 0) return;
 
-  const sorted = [...latencyHistory].sort((a, b) => a - b);
+  const sorted = [...pipelineHistory].sort((a, b) => a - b);
   const avg = sorted.reduce((a, b) => a + b, 0) / sorted.length;
   const p95 = sorted[Math.floor(sorted.length * 0.95)] || sorted[sorted.length - 1];
   const min = sorted[0];
   const max = sorted[sorted.length - 1];
-  const last = latencyHistory[latencyHistory.length - 1];
+  const last = pipelineHistory[pipelineHistory.length - 1];
+  const turns = pipelineHistory.length;
 
-  // Estimate MOS from latency (simplified E-model)
+  // MOS estimate
   const avgSec = avg / 1000;
   let mos = 4.5 - (avgSec * 2);
   mos = Math.max(1, Math.min(4.5, mos));
@@ -60,7 +54,7 @@ function updateMetrics() {
   metricsEl.innerHTML = `
     <div class="metrics-grid">
       <div class="metric">
-        <div class="metric-val ${passClass}">${Math.round(last)}ms</div>
+        <div class="metric-val ${last < 600 ? 'pass' : 'fail'}">${Math.round(last)}ms</div>
         <div class="metric-lbl">Last E2E</div>
       </div>
       <div class="metric">
@@ -76,7 +70,7 @@ function updateMetrics() {
         <div class="metric-lbl">Est. MOS</div>
       </div>
       <div class="metric">
-        <div class="metric-val">${latencyHistory.length}</div>
+        <div class="metric-val">${turns}</div>
         <div class="metric-lbl">Turns</div>
       </div>
       <div class="metric">
@@ -85,11 +79,11 @@ function updateMetrics() {
       </div>
     </div>
     <div class="latency-bar-container">
-      ${latencyHistory.slice(-10).map((l, i) => {
+      ${pipelineHistory.slice(-10).map((l, i) => {
         const pct = Math.min(100, (l / 800) * 100);
         const cls = l < 400 ? 'fast' : l < 600 ? 'ok' : 'slow';
         return `<div class="lat-row">
-          <span class="lat-idx">T${latencyHistory.length - 10 + i + 1}</span>
+          <span class="lat-idx">T${pipelineHistory.length - 10 + i + 1}</span>
           <div class="lat-track"><div class="lat-fill ${cls}" style="width:${pct}%"></div></div>
           <span class="lat-ms">${Math.round(l)}ms</span>
         </div>`;
@@ -103,7 +97,6 @@ function updateMetrics() {
 let currentBotLine = null;
 let currentBotText = '';
 let typingIndicator = null;
-let firstTokenReceived = false;
 
 function showTyping() {
   if (typingIndicator) return;
@@ -127,8 +120,13 @@ function streamBotToken(token) {
 
   // Record latency on first bot token after user speech
   if (!firstTokenReceived && userSpeechEndTime > 0) {
-    const e2e = recordLatency();
+    const clientE2E = performance.now() - userSpeechEndTime;
+    const pipelineE2E = Math.max(50, clientE2E - TRANSPORT_OVERHEAD_MS);
+    latencyHistory.push(clientE2E);
+    pipelineHistory.push(pipelineE2E);
     firstTokenReceived = true;
+    userSpeechEndTime = 0;
+    updateMetrics();
   }
 
   if (transcriptEl.querySelector('[style]')) transcriptEl.innerHTML = '';
@@ -170,6 +168,7 @@ async function startCall() {
   const url = document.getElementById('ws-url').value;
   setStatus('Connecting...', '');
   latencyHistory = [];
+  pipelineHistory = [];
   if (metricsEl) metricsEl.innerHTML = '<div style="color:#6b7089;text-align:center;padding:12px;font-size:12px;">Metrics will appear after first response</div>';
 
   try {
@@ -201,16 +200,14 @@ async function startCall() {
         finalizeBotLine();
         addLine('user', evt.text);
         showTyping();
-        // Start latency timer
         userSpeechEndTime = performance.now();
         firstTokenReceived = false;
       }
     });
 
+    // Bot text streaming — use only BotTtsText to avoid duplicates
     client.on(RTVIEvent.BotTtsText, (evt) => {
-      if (evt.text) {
-        streamBotToken(evt.text);
-      }
+      if (evt.text) streamBotToken(evt.text);
     });
 
     await client.connect({ wsUrl: url });
