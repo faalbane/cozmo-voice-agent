@@ -113,70 +113,15 @@ async def healthz():
 
 @app.post("/calls/load-test")
 async def load_test(count: int = 100):
-    """Simulate N concurrent calls with scripted conversations.
+    """Run a REAL load test: N concurrent calls through Groq LLM + Deepgram TTS.
 
-    Creates N pipelines, sends a test message to each, measures response time.
-    Returns aggregate latency stats across all calls.
+    Each call sends a real prompt, gets a real LLM response, runs it through
+    real TTS, and measures actual E2E latency. No mocking.
     """
-    import time
+    from src.load_test import run_load_test as _run_load_test
 
-    results = []
-    created = 0
-    failed = 0
-
-    # Create calls in batches
-    batch_size = 10
-    for batch_start in range(0, count, batch_size):
-        batch_end = min(batch_start + batch_size, count)
-        batch_tasks = []
-
-        for i in range(batch_start, batch_end):
-            call_id = f"load-{uuid.uuid4().hex[:6]}"
-            port = next_ws_port
-            globals()['next_ws_port'] = port + 1
-
-            try:
-                t_start = time.monotonic()
-                task = asyncio.create_task(
-                    run_websocket_agent(host="0.0.0.0", port=port)
-                )
-                active_calls[call_id] = task
-                setup_time = (time.monotonic() - t_start) * 1000
-                created += 1
-                results.append({
-                    "call_id": call_id,
-                    "port": port,
-                    "setup_ms": round(setup_time, 1),
-                    "status": "active",
-                })
-            except Exception as e:
-                failed += 1
-                results.append({
-                    "call_id": call_id,
-                    "status": "failed",
-                    "error": str(e),
-                })
-
-        # Small pause between batches
-        await asyncio.sleep(0.1)
-
-    # Compute stats
-    setup_times = [r["setup_ms"] for r in results if r["status"] == "active"]
-    avg_setup = sum(setup_times) / len(setup_times) if setup_times else 0
-    sorted_setup = sorted(setup_times)
-    p95_setup = sorted_setup[int(len(sorted_setup) * 0.95)] if len(sorted_setup) > 1 else 0
-
-    return JSONResponse({
-        "total_requested": count,
-        "created": created,
-        "failed": failed,
-        "failure_rate_pct": round(failed / count * 100, 1) if count > 0 else 0,
-        "active_calls": len([c for c in active_calls.values() if not c.done()]),
-        "avg_setup_ms": round(avg_setup, 1),
-        "p95_setup_ms": round(p95_setup, 1),
-        "pipeline_latency_estimate_ms": "~350-500 (Groq ~100ms + Deepgram TTS ~200ms + overhead)",
-        "results": results[:10],  # First 10 for brevity
-    })
+    results = await _run_load_test(count=count, concurrency=20)
+    return JSONResponse(results)
 
 
 async def run_server(host: str = "0.0.0.0", port: int = 8080):

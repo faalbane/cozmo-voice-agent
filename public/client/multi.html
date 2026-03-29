@@ -5,48 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ShopEase — 100 Concurrent Calls Load Test</title>
 <style>
-:root { --bg:#0a0c10; --card:#171a22; --border:#252833; --text:#e4e7f0; --muted:#6b7089; --green:#22c55e; --red:#ef4444; --blue:#3b82f6; --purple:#7c3aed; }
+:root { --bg:#0a0c10; --card:#171a22; --border:#252833; --text:#e4e7f0; --muted:#6b7089; --green:#22c55e; --red:#ef4444; --blue:#3b82f6; --purple:#7c3aed; --yellow:#eab308; }
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--text); padding:24px; max-width:900px; margin:0 auto; }
-
+body { font-family:-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--text); padding:24px; max-width:1000px; margin:0 auto; }
 .top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
 .back { padding:6px 14px; border-radius:6px; border:1px solid var(--border); background:var(--card); color:var(--text); text-decoration:none; font-size:13px; }
-.back:hover { border-color:var(--blue); }
 h1 { font-size:22px; }
 .sub { color:var(--muted); font-size:13px; margin-bottom:24px; text-align:center; }
-
 .launch-section { text-align:center; margin-bottom:24px; }
 .launch-btn {
   padding:14px 40px; border-radius:8px; border:none;
   background:var(--purple); color:#fff; font-size:16px; font-weight:600;
   cursor:pointer; transition:all .2s;
 }
-.launch-btn:hover { background:#6d28d9; transform:scale(1.02); }
-.launch-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
-
-.progress-bar {
-  margin:16px auto; max-width:500px; height:8px;
-  background:var(--card); border:1px solid var(--border); border-radius:4px; overflow:hidden;
-}
-.progress-fill { height:100%; background:var(--green); border-radius:3px; transition:width .3s; width:0%; }
-.progress-text { font-size:13px; color:var(--muted); margin-top:6px; }
-
-.stats-grid {
-  display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px;
-}
-.stat-card {
-  background:var(--card); border:1px solid var(--border); border-radius:8px;
-  padding:16px; text-align:center;
-}
-.stat-card .val { font-size:28px; font-weight:700; font-family:monospace; }
+.launch-btn:hover { background:#6d28d9; }
+.launch-btn:disabled { opacity:0.5; cursor:not-allowed; }
+.progress-text { font-size:13px; color:var(--muted); margin-top:10px; min-height:20px; }
+.stats-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:20px; }
+.stat-card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; text-align:center; }
+.stat-card .val { font-size:24px; font-weight:700; font-family:monospace; }
 .stat-card .val.green { color:var(--green); }
 .stat-card .val.red { color:var(--red); }
-.stat-card .lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-top:4px; }
-
-.result-box {
-  background:var(--card); border:1px solid var(--border); border-radius:8px;
-  padding:16px; margin-bottom:16px; display:none;
-}
+.stat-card .val.yellow { color:var(--yellow); }
+.stat-card .lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-top:4px; }
+.result-box { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:16px; display:none; }
 .result-box.show { display:block; }
 .result-title { font-size:14px; font-weight:600; margin-bottom:12px; }
 .result-row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px; }
@@ -55,141 +37,126 @@ h1 { font-size:22px; }
 .result-row .value { font-family:monospace; font-weight:600; }
 .result-row .value.pass { color:var(--green); }
 .result-row .value.fail { color:var(--red); }
-
-.calls-preview {
-  background:var(--card); border:1px solid var(--border); border-radius:8px;
-  padding:16px; max-height:300px; overflow-y:auto; display:none;
-}
-.calls-preview.show { display:block; }
-.calls-preview table { width:100%; border-collapse:collapse; }
-.calls-preview th { text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); padding:6px 8px; border-bottom:1px solid var(--border); }
-.calls-preview td { font-size:12px; font-family:monospace; padding:5px 8px; border-bottom:1px solid var(--border); }
-.dot-on { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--green); margin-right:6px; animation:pulse 2s infinite; }
-@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+.calls-table { width:100%; border-collapse:collapse; margin-top:12px; }
+.calls-table th { text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); padding:6px 8px; border-bottom:1px solid var(--border); }
+.calls-table td { font-size:12px; padding:5px 8px; border-bottom:1px solid var(--border); }
+.calls-table .mono { font-family:monospace; }
+.calls-table .pass { color:var(--green); }
+.calls-table .fail { color:var(--red); }
+.note { font-size:11px; color:var(--muted); text-align:center; margin-top:16px; line-height:1.6; }
 </style>
 </head>
 <body>
 
 <div class="top-bar">
   <a href="/" class="back">← Single Call</a>
-  <h1>100 Concurrent Calls Load Test</h1>
+  <h1>100 Concurrent Calls — Real Load Test</h1>
   <div style="width:90px;"></div>
 </div>
-<p class="sub">Creates 100 simultaneous voice agent pipelines to demonstrate concurrent call handling</p>
+<p class="sub">Each call sends a real prompt through Groq LLM + Deepgram TTS and measures actual E2E latency. No mocking.</p>
 
 <div class="launch-section">
-  <button class="launch-btn" id="launch-btn" onclick="runLoadTest()">Run 100-Call Load Test</button>
-  <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-  <div class="progress-text" id="progress-text">Click to start</div>
+  <button class="launch-btn" id="launch-btn" onclick="runTest()">Run 100-Call Load Test</button>
+  <div class="progress-text" id="progress-text">Each call makes real API requests to Groq + Deepgram</div>
 </div>
 
 <div class="stats-grid">
-  <div class="stat-card"><div class="val green" id="s-active">0</div><div class="lbl">Active Pipelines</div></div>
-  <div class="stat-card"><div class="val" id="s-total">0</div><div class="lbl">Total Created</div></div>
-  <div class="stat-card"><div class="val" id="s-failed">0</div><div class="lbl">Failed</div></div>
-  <div class="stat-card"><div class="val green" id="s-latency">--</div><div class="lbl">Est. Pipeline Latency</div></div>
+  <div class="stat-card"><div class="val" id="s-total">--</div><div class="lbl">Calls</div></div>
+  <div class="stat-card"><div class="val green" id="s-success">--</div><div class="lbl">Successful</div></div>
+  <div class="stat-card"><div class="val" id="s-avg">--</div><div class="lbl">Avg Latency</div></div>
+  <div class="stat-card"><div class="val" id="s-p95">--</div><div class="lbl">P95 Latency</div></div>
+  <div class="stat-card"><div class="val" id="s-target">--</div><div class="lbl">&lt;600ms Target</div></div>
 </div>
 
 <div class="result-box" id="result-box">
   <div class="result-title">Load Test Results</div>
   <div id="result-rows"></div>
-</div>
 
-<div class="calls-preview" id="calls-preview">
-  <table>
-    <thead><tr><th></th><th>Call ID</th><th>Port</th><th>Setup Time</th><th>Status</th></tr></thead>
+  <table class="calls-table" id="calls-table" style="display:none;">
+    <thead><tr><th>#</th><th>Prompt</th><th>Latency</th><th>Response</th><th>Status</th></tr></thead>
     <tbody id="calls-tbody"></tbody>
   </table>
 </div>
 
-<script>
-const SERVER = 'http://localhost:8080';
-let calls = [];
-let totalCreated = 0;
-let totalFailed = 0;
+<div class="note">
+  Pipeline: Silero VAD → Deepgram STT → Groq Llama 3.1 8B → Deepgram Aura TTS<br>
+  20 calls run concurrently per batch. All API calls are real — check server logs for confirmation.
+</div>
 
-async function runLoadTest() {
+<script>
+async function runTest() {
   const btn = document.getElementById('launch-btn');
   btn.disabled = true;
-  btn.textContent = 'Running...';
-  document.getElementById('progress-text').textContent = 'Creating 100 concurrent pipelines...';
-  document.getElementById('progress-fill').style.width = '10%';
+  btn.textContent = 'Running 100 calls...';
+  document.getElementById('progress-text').textContent = 'Sending 100 real prompts through Groq + Deepgram TTS (20 concurrent)...';
+  document.getElementById('result-box').classList.remove('show');
 
-  calls = [];
-  totalCreated = 0;
-  totalFailed = 0;
+  // Reset stats
+  ['s-total','s-success','s-avg','s-p95','s-target'].forEach(id => {
+    document.getElementById(id).textContent = '...';
+    document.getElementById(id).className = 'val';
+  });
 
-  // Create calls in batches of 10 for visual progress
-  const TOTAL = 100;
-  const BATCH = 10;
-
-  for (let batch = 0; batch < TOTAL; batch += BATCH) {
-    const promises = [];
-    for (let i = 0; i < BATCH && (batch + i) < TOTAL; i++) {
-      promises.push(createCall());
-    }
-    await Promise.all(promises);
-
-    const pct = Math.round(((batch + BATCH) / TOTAL) * 100);
-    document.getElementById('progress-fill').style.width = pct + '%';
-    document.getElementById('progress-text').textContent = `Created ${totalCreated} / ${TOTAL} pipelines (${totalFailed} failed)`;
-    updateStats();
-
-    await new Promise(r => setTimeout(r, 50));
-  }
-
-  document.getElementById('progress-fill').style.width = '100%';
-  document.getElementById('progress-text').textContent = `Complete: ${totalCreated} pipelines active, ${totalFailed} failed`;
-  btn.textContent = 'Run Again';
-  btn.disabled = false;
-
-  showResults();
-}
-
-async function createCall() {
   try {
-    const resp = await fetch(SERVER + '/calls', { method: 'POST' });
+    const resp = await fetch('http://localhost:8080/calls/load-test?count=100', {
+      method: 'POST',
+    });
+
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
-    totalCreated++;
-    calls.push({ id: data.call_id, ws: data.websocket_url, status: 'active', setupMs: 0 });
+
+    // Update stats
+    document.getElementById('s-total').textContent = data.total_calls;
+    document.getElementById('s-success').textContent = data.successful;
+    document.getElementById('s-success').className = 'val ' + (data.successful >= 90 ? 'green' : 'red');
+    document.getElementById('s-avg').textContent = data.avg_latency_ms + 'ms';
+    document.getElementById('s-avg').className = 'val ' + (data.avg_latency_ms < 600 ? 'green' : 'red');
+    document.getElementById('s-p95').textContent = data.p95_latency_ms + 'ms';
+    document.getElementById('s-p95').className = 'val ' + (data.p95_latency_ms < 600 ? 'green' : 'yellow');
+    document.getElementById('s-target').textContent = data.target_600ms ? 'PASS' : 'FAIL';
+    document.getElementById('s-target').className = 'val ' + (data.target_600ms ? 'green' : 'red');
+
+    // Results table
+    const rows = [
+      ['Total Calls', data.total_calls],
+      ['Successful', data.successful, data.successful >= 90 ? 'pass' : 'fail'],
+      ['Failed', data.failed, data.failed <= 10 ? 'pass' : 'fail'],
+      ['Failure Rate', data.failure_rate_pct + '%', data.failure_rate_pct < 5 ? 'pass' : 'fail'],
+      ['Avg Latency', data.avg_latency_ms + 'ms', data.avg_latency_ms < 600 ? 'pass' : 'fail'],
+      ['P95 Latency', data.p95_latency_ms + 'ms', data.p95_latency_ms < 800 ? 'pass' : 'fail'],
+      ['Min Latency', data.min_latency_ms + 'ms'],
+      ['Max Latency', data.max_latency_ms + 'ms'],
+      ['Total Test Time', (data.total_time_ms / 1000).toFixed(1) + 's'],
+      ['<600ms Target', data.target_600ms ? 'PASSING' : 'OVER TARGET', data.target_600ms ? 'pass' : 'fail'],
+    ];
+    document.getElementById('result-rows').innerHTML = rows.map(r =>
+      `<div class="result-row"><span class="label">${r[0]}</span><span class="value ${r[2] || ''}">${r[1]}</span></div>`
+    ).join('');
+
+    // Individual calls
+    if (data.calls && data.calls.length > 0) {
+      document.getElementById('calls-tbody').innerHTML = data.calls.map(c =>
+        `<tr>
+          <td class="mono">${c.call_id}</td>
+          <td>${c.prompt || '--'}</td>
+          <td class="mono ${c.latency_ms > 0 && c.latency_ms < 600 ? 'pass' : 'fail'}">${c.latency_ms > 0 ? c.latency_ms + 'ms' : '--'}</td>
+          <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--muted);">${c.response || c.error || '--'}</td>
+          <td class="${c.status === 'completed' ? 'pass' : 'fail'}">${c.status}</td>
+        </tr>`
+      ).join('');
+      document.getElementById('calls-table').style.display = 'table';
+    }
+
+    document.getElementById('result-box').classList.add('show');
+    document.getElementById('progress-text').textContent = `Complete: ${data.successful} calls, avg ${data.avg_latency_ms}ms`;
+
   } catch (e) {
-    totalFailed++;
+    document.getElementById('progress-text').textContent = 'Error: ' + e.message + ' — ensure server is running on :8080';
+    document.getElementById('progress-text').style.color = 'var(--red)';
   }
-}
 
-function updateStats() {
-  const active = calls.filter(c => c.status === 'active').length;
-  document.getElementById('s-active').textContent = active;
-  document.getElementById('s-total').textContent = totalCreated;
-  document.getElementById('s-failed').textContent = totalFailed;
-  document.getElementById('s-latency').textContent = '~350ms';
-}
-
-function showResults() {
-  const failRate = totalCreated + totalFailed > 0 ? (totalFailed / (totalCreated + totalFailed) * 100) : 0;
-
-  const rows = [
-    ['Total Requested', '100'],
-    ['Successfully Created', totalCreated, totalCreated >= 90 ? 'pass' : 'fail'],
-    ['Failed', totalFailed, totalFailed <= 10 ? 'pass' : 'fail'],
-    ['Failure Rate', failRate.toFixed(1) + '%', failRate < 5 ? 'pass' : 'fail'],
-    ['Active Pipelines', calls.filter(c => c.status === 'active').length, 'pass'],
-    ['Est. Pipeline Latency', '~350ms (Groq ~100ms + Deepgram TTS ~200ms)', 'pass'],
-    ['Target', '<600ms avg', 'pass'],
-    ['Status', totalCreated >= 90 ? 'PASSING' : 'NEEDS REVIEW', totalCreated >= 90 ? 'pass' : 'fail'],
-  ];
-
-  document.getElementById('result-rows').innerHTML = rows.map(r =>
-    `<div class="result-row"><span class="label">${r[0]}</span><span class="value ${r[2] || ''}">${r[1]}</span></div>`
-  ).join('');
-  document.getElementById('result-box').classList.add('show');
-
-  // Show first 20 calls
-  document.getElementById('calls-tbody').innerHTML = calls.slice(0, 20).map(c =>
-    `<tr><td><span class="dot-on"></span></td><td>${c.id}</td><td>${c.ws.split(':').pop()}</td><td>--</td><td style="color:var(--green)">active</td></tr>`
-  ).join('') + (calls.length > 20 ? `<tr><td colspan="5" style="color:var(--muted);text-align:center;">...and ${calls.length - 20} more</td></tr>` : '');
-  document.getElementById('calls-preview').classList.add('show');
+  btn.disabled = false;
+  btn.textContent = 'Run Again';
 }
 </script>
 </body>
