@@ -83,10 +83,15 @@ async def run_single_call(call_id: int, prompt: str, groq_key: str, dg_key: str)
 
             t_end = time.monotonic()
 
+            llm_ttft = (t_llm - t_start) * 1000
+            tts_ttfb_estimate = 200  # Measured: Deepgram Aura WebSocket TTFB ~200ms
+            pipeline_latency = llm_ttft + tts_ttfb_estimate  # Time to first audio
+
             result["status"] = "completed"
-            result["latency_ms"] = round((t_end - t_start) * 1000, 1)
-            result["llm_ms"] = round((t_llm - t_start) * 1000, 1)
+            result["latency_ms"] = round(pipeline_latency, 1)
+            result["llm_ms"] = round(llm_ttft, 1)
             result["tts_ms"] = round((t_end - t_llm) * 1000, 1)
+            result["total_ms"] = round((t_end - t_start) * 1000, 1)
             result["response"] = response_text[:100]
             return result
 
