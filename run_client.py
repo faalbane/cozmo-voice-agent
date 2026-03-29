@@ -64,7 +64,21 @@ async def main():
     webbrowser.open(f"http://localhost:{CLIENT_PORT}")
 
     # Start the Pipecat agent
+    # For single-call mode, start one WebSocket agent
+    # For demo, also start the server mode on port 8080
     from src.agent import run_websocket_agent
+    from src.server import run_server
+
+    # Start server mode in background for concurrent call demos
+    import threading as _threading
+    server_thread = _threading.Thread(
+        target=lambda: asyncio.run(run_server(host="0.0.0.0", port=8080)),
+        daemon=True,
+    )
+    server_thread.start()
+    print(f"  Concurrent demo:  http://localhost:{CLIENT_PORT}/multi.html")
+    print(f"  Server API:       http://localhost:8080/calls")
+
     await run_websocket_agent(host="0.0.0.0", port=AGENT_WS_PORT)
 
 

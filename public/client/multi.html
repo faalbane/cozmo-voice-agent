@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShopEase — Concurrent Calls Demo</title>
+<style>
+:root { --bg:#0a0c10; --card:#171a22; --border:#252833; --text:#e4e7f0; --muted:#6b7089; --green:#22c55e; --red:#ef4444; --blue:#3b82f6; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--text); padding:24px; }
+h1 { font-size:20px; text-align:center; margin-bottom:4px; }
+.sub { text-align:center; color:var(--muted); font-size:13px; margin-bottom:20px; }
+.controls { display:flex; justify-content:center; gap:12px; margin-bottom:20px; }
+.btn {
+  padding:8px 20px; border-radius:6px; border:1px solid var(--border);
+  background:var(--card); color:var(--text); font-size:13px; cursor:pointer;
+}
+.btn:hover { border-color:var(--blue); }
+.btn.primary { background:var(--blue); border-color:var(--blue); color:#fff; }
+.btn.danger { background:var(--red); border-color:var(--red); color:#fff; }
+.stats-bar {
+  display:flex; justify-content:center; gap:32px; margin-bottom:20px;
+  padding:12px; background:var(--card); border:1px solid var(--border); border-radius:8px;
+}
+.stat-item { text-align:center; }
+.stat-val { font-size:24px; font-weight:700; font-family:monospace; }
+.stat-val.green { color:var(--green); }
+.stat-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; }
+.grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap:12px;
+}
+.call-card {
+  background:var(--card); border:1px solid var(--border); border-radius:8px;
+  padding:12px; font-size:12px;
+}
+.call-card .hdr {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:8px; font-weight:600; font-size:13px;
+}
+.call-card .hdr .dot { width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+.call-card .transcript {
+  background:var(--bg); border-radius:6px; padding:8px;
+  max-height:120px; overflow-y:auto; font-size:11px; line-height:1.5;
+}
+.call-card .metrics { margin-top:8px; font-family:monospace; font-size:11px; color:var(--muted); }
+.call-card .metrics span { color:var(--green); font-weight:600; }
+</style>
+</head>
+<body>
+<h1>Concurrent Calls Demo</h1>
+<p class="sub">Demonstrates multiple simultaneous voice agent sessions via server mode</p>
+
+<div class="controls">
+  <input id="server-url" value="http://localhost:8080" style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-family:monospace;font-size:12px;width:250px;">
+  <button class="btn primary" onclick="addCalls(5)">Add 5 Calls</button>
+  <button class="btn primary" onclick="addCalls(10)">Add 10 Calls</button>
+  <button class="btn" onclick="addCalls(1)">Add 1 Call</button>
+  <button class="btn danger" onclick="endAll()">End All</button>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-val green" id="s-active">0</div><div class="stat-lbl">Active Calls</div></div>
+  <div class="stat-item"><div class="stat-val" id="s-total">0</div><div class="stat-lbl">Total Created</div></div>
+  <div class="stat-item"><div class="stat-val" id="s-failed">0</div><div class="stat-lbl">Failed</div></div>
+  <div class="stat-item"><div class="stat-val green" id="s-rate">0/s</div><div class="stat-lbl">Setup Rate</div></div>
+</div>
+
+<div class="grid" id="calls-grid"></div>
+
+<script>
+let calls = [];
+let totalCreated = 0;
+let totalFailed = 0;
+let startTime = Date.now();
+
+async function addCalls(n) {
+  const serverUrl = document.getElementById('server-url').value;
+
+  for (let i = 0; i < n; i++) {
+    try {
+      const resp = await fetch(serverUrl + '/calls', { method: 'POST' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      totalCreated++;
+
+      const call = {
+        id: data.call_id,
+        wsUrl: data.websocket_url,
+        startTime: Date.now(),
+        status: 'active',
+      };
+      calls.push(call);
+
+    } catch (e) {
+      totalFailed++;
+      console.error('Failed to create call:', e);
+    }
+
+    // Small delay between calls to avoid overwhelming
+    if (i < n - 1) await new Promise(r => setTimeout(r, 200));
+  }
+
+  updateUI();
+}
+
+async function endAll() {
+  const serverUrl = document.getElementById('server-url').value;
+  for (const call of calls) {
+    try {
+      await fetch(serverUrl + '/calls/' + call.id, { method: 'DELETE' });
+    } catch (e) {}
+  }
+  calls = [];
+  updateUI();
+}
+
+function updateUI() {
+  const active = calls.filter(c => c.status === 'active');
+  const elapsed = (Date.now() - startTime) / 1000;
+
+  document.getElementById('s-active').textContent = active.length;
+  document.getElementById('s-total').textContent = totalCreated;
+  document.getElementById('s-failed').textContent = totalFailed;
+  document.getElementById('s-rate').textContent = (totalCreated / Math.max(1, elapsed)).toFixed(1) + '/s';
+
+  const grid = document.getElementById('calls-grid');
+  grid.innerHTML = active.map(c => {
+    const dur = Math.floor((Date.now() - c.startTime) / 1000);
+    const m = Math.floor(dur / 60);
+    const s = dur % 60;
+    return `<div class="call-card">
+      <div class="hdr">
+        <span><span class="dot" style="display:inline-block;margin-right:6px;"></span>${c.id}</span>
+        <span style="color:var(--muted)">${m}:${s.toString().padStart(2,'0')}</span>
+      </div>
+      <div class="metrics">WebSocket: <span>${c.wsUrl}</span></div>
+    </div>`;
+  }).join('');
+}
+
+// Auto-update durations
+setInterval(updateUI, 1000);
+</script>
+</body>
+</html>

@@ -72,8 +72,33 @@ async def create_agent_pipeline(transport, call_id: str = "local"):
     context = OpenAILLMContext(messages=messages)
     context_aggregator = llm.create_context_aggregator(context)
 
-    # Knowledge is embedded in system prompt — no tool calling needed
-    # (Groq/Llama doesn't reliably support function calling)
+    # --- Knowledge base (keyword search) ---
+    # Augments the system prompt with relevant KB results per turn.
+    from src.knowledge.search import search_knowledge
+
+    class KBLookupProcessor(FrameProcessor):
+        """Searches knowledge base on each user transcript and injects context."""
+
+        def __init__(self):
+            super().__init__(name="kb-lookup")
+
+        async def process_frame(self, frame: Frame, direction: FrameDirection):
+            await super().process_frame(frame, direction)
+
+            if isinstance(frame, TranscriptionFrame) and frame.text.strip():
+                kb_result = search_knowledge(frame.text)
+                if kb_result:
+                    logger.info(f"[KB] Found results for: {frame.text[:50]}")
+                    # Update system message with KB context
+                    if context.messages and context.messages[0]["role"] == "system":
+                        base_prompt = SYSTEM_PROMPT
+                        context.messages[0]["content"] = (
+                            base_prompt + "\n\n## Relevant Knowledge for This Query:\n" + kb_result
+                        )
+
+            await self.push_frame(frame, direction)
+
+    kb_processor = KBLookupProcessor()
 
     # --- Server-side latency measurement processor ---
     class LatencyMeasurer(FrameProcessor):
@@ -127,6 +152,7 @@ async def create_agent_pipeline(transport, call_id: str = "local"):
             transport.input(),
             stt,
             latency_measurer,
+            kb_processor,
             context_aggregator.user(),
             llm,
             tts,
