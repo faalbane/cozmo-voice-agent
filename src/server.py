@@ -92,17 +92,56 @@ async def list_calls():
     })
 
 
-@app.post("/calls/load-test")
-async def load_test(count: int = 100):
-    """Run a REAL load test: N concurrent calls through Groq LLM + Deepgram TTS.
+@app.get("/calls/load-test")
+async def load_test_stream(count: int = 100):
+    """Stream real load test results via SSE as each batch completes."""
+    import json as _json
+    from starlette.responses import StreamingResponse
+    from src.load_test import run_single_call, TEST_PROMPTS
 
-    Each call sends a real prompt, gets a real LLM response, runs it through
-    real TTS, and measures actual E2E latency. No mocking.
-    """
-    from src.load_test import run_load_test as _run_load_test
+    groq_key = os.getenv("GROQ_API_KEY")
+    dg_key = os.getenv("DEEPGRAM_API_KEY")
 
-    results = await _run_load_test(count=count, concurrency=10)
-    return JSONResponse(results)
+    async def generate():
+        all_results = []
+        concurrency = 10
+
+        for batch_start in range(0, count, concurrency):
+            batch_end = min(batch_start + concurrency, count)
+            tasks = [
+                run_single_call(i, TEST_PROMPTS[i % len(TEST_PROMPTS)], groq_key, dg_key)
+                for i in range(batch_start, batch_end)
+            ]
+            batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for r in batch_results:
+                if isinstance(r, Exception):
+                    all_results.append({"call_id": -1, "status": "error", "error": str(r), "latency_ms": -1})
+                else:
+                    all_results.append(r)
+
+            # Compute running stats
+            successful = [r for r in all_results if r.get("status") == "completed"]
+            latencies = sorted([r["latency_ms"] for r in successful])
+            avg = sum(latencies) / len(latencies) if latencies else 0
+            p95 = latencies[int(len(latencies) * 0.95)] if len(latencies) > 1 else (latencies[0] if latencies else 0)
+
+            update = {
+                "progress": len(all_results),
+                "total": count,
+                "successful": len(successful),
+                "failed": len(all_results) - len(successful),
+                "avg_latency_ms": round(avg, 1),
+                "p95_latency_ms": round(p95, 1),
+                "min_latency_ms": round(latencies[0], 1) if latencies else 0,
+                "max_latency_ms": round(latencies[-1], 1) if latencies else 0,
+                "target_600ms": avg < 600,
+                "batch": [r for r in batch_results if not isinstance(r, Exception)],
+                "done": len(all_results) >= count,
+            }
+            yield f"data: {_json.dumps(update)}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 
 @app.delete("/calls/{call_id}")

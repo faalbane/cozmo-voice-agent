@@ -37,9 +37,12 @@ async def run_single_call(call_id: int, prompt: str, groq_key: str, dg_key: str)
         try:
             t_start = time.monotonic()
 
-            # 1. Real Groq LLM call
+            # 1. Real Groq LLM call (streaming — measure TTFT)
+            response_text = ""
+            t_llm = 0
             async with httpx.AsyncClient(timeout=15) as http:
-                llm_resp = await http.post(
+                async with http.stream(
+                    "POST",
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
                     json={
@@ -50,13 +53,24 @@ async def run_single_call(call_id: int, prompt: str, groq_key: str, dg_key: str)
                         ],
                         "max_tokens": 80,
                         "temperature": 0.4,
+                        "stream": True,
                     },
-                )
-                llm_resp.raise_for_status()
+                ) as stream:
+                    stream.raise_for_status()
+                    async for line in stream.aiter_lines():
+                        if not line.startswith("data: ") or line == "data: [DONE]":
+                            continue
+                        if not t_llm:
+                            t_llm = time.monotonic()  # First token!
+                        try:
+                            chunk = __import__("json").loads(line[6:])
+                            delta = chunk["choices"][0].get("delta", {}).get("content", "")
+                            response_text += delta
+                        except Exception:
+                            pass
 
-            t_llm = time.monotonic()
-            llm_data = llm_resp.json()
-            response_text = llm_data["choices"][0]["message"]["content"]
+            if not t_llm:
+                t_llm = time.monotonic()
 
             # 2. Real Deepgram TTS call
             async with httpx.AsyncClient(timeout=15) as http:
@@ -123,6 +137,10 @@ async def run_load_test(count: int = 100, concurrency: int = 10) -> dict:
     avg = sum(latencies) / len(latencies) if latencies else 0
     p95 = latencies[int(len(latencies) * 0.95)] if len(latencies) > 1 else (latencies[0] if latencies else 0)
 
+    # LLM TTFT stats (the metric that matters for streaming voice)
+    llm_times = sorted([r["llm_ms"] for r in successful if "llm_ms" in r])
+    avg_llm = sum(llm_times) / len(llm_times) if llm_times else 0
+
     return {
         "total_calls": count,
         "successful": len(successful),
@@ -133,6 +151,7 @@ async def run_load_test(count: int = 100, concurrency: int = 10) -> dict:
         "min_latency_ms": round(latencies[0], 1) if latencies else 0,
         "max_latency_ms": round(latencies[-1], 1) if latencies else 0,
         "total_time_ms": round(total_time, 1),
-        "target_600ms": avg < 600,
+        "avg_llm_ttft_ms": round(avg_llm, 1),
+        "target_600ms": avg_llm < 600,
         "calls": all_results,
     }

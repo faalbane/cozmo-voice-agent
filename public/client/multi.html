@@ -13,14 +13,10 @@ body { font-family:-apple-system,system-ui,sans-serif; background:var(--bg); col
 h1 { font-size:22px; }
 .sub { color:var(--muted); font-size:13px; margin-bottom:24px; text-align:center; }
 .launch-section { text-align:center; margin-bottom:24px; }
-.launch-btn {
-  padding:14px 40px; border-radius:8px; border:none;
-  background:var(--purple); color:#fff; font-size:16px; font-weight:600;
-  cursor:pointer; transition:all .2s;
-}
+.launch-btn { padding:14px 40px; border-radius:8px; border:none; background:var(--purple); color:#fff; font-size:16px; font-weight:600; cursor:pointer; }
 .launch-btn:hover { background:#6d28d9; }
 .launch-btn:disabled { opacity:0.5; cursor:not-allowed; }
-.progress-text { font-size:13px; color:var(--muted); margin-top:10px; min-height:20px; }
+.progress-text { font-size:13px; color:var(--muted); margin-top:10px; }
 .stats-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:20px; }
 .stat-card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; text-align:center; }
 .stat-card .val { font-size:24px; font-weight:700; font-family:monospace; }
@@ -28,6 +24,7 @@ h1 { font-size:22px; }
 .stat-card .val.red { color:var(--red); }
 .stat-card .val.yellow { color:var(--yellow); }
 .stat-card .lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-top:4px; }
+.live-log { background:#0d0f14; border:1px solid var(--border); border-radius:8px; padding:12px; max-height:400px; overflow-y:auto; font-family:monospace; font-size:11px; line-height:1.8; display:none; margin-bottom:16px; }
 .result-box { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:16px; display:none; }
 .result-box.show { display:block; }
 .result-title { font-size:14px; font-weight:600; margin-bottom:12px; }
@@ -37,20 +34,14 @@ h1 { font-size:22px; }
 .result-row .value { font-family:monospace; font-weight:600; }
 .result-row .value.pass { color:var(--green); }
 .result-row .value.fail { color:var(--red); }
-.calls-table { width:100%; border-collapse:collapse; margin-top:12px; }
-.calls-table th { text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); padding:6px 8px; border-bottom:1px solid var(--border); }
-.calls-table td { font-size:12px; padding:5px 8px; border-bottom:1px solid var(--border); }
-.calls-table .mono { font-family:monospace; }
-.calls-table .pass { color:var(--green); }
-.calls-table .fail { color:var(--red); }
 .note { font-size:11px; color:var(--muted); text-align:center; margin-top:16px; line-height:1.6; }
 </style>
 </head>
 <body>
 
 <div class="top-bar">
-  <a href="/" class="back">← Single Call</a>
-  <h1>100 Concurrent Calls — Real Load Test</h1>
+  <a href="/" class="back">&larr; Single Call</a>
+  <h1>100 Concurrent Calls &mdash; Real Load Test</h1>
   <div style="width:90px;"></div>
 </div>
 <p class="sub">Each call sends a real prompt through Groq LLM + Deepgram TTS and measures actual E2E latency. No mocking.</p>
@@ -61,102 +52,132 @@ h1 { font-size:22px; }
 </div>
 
 <div class="stats-grid">
-  <div class="stat-card"><div class="val" id="s-total">--</div><div class="lbl">Calls</div></div>
+  <div class="stat-card"><div class="val" id="s-total">--</div><div class="lbl">Progress</div></div>
   <div class="stat-card"><div class="val green" id="s-success">--</div><div class="lbl">Successful</div></div>
   <div class="stat-card"><div class="val" id="s-avg">--</div><div class="lbl">Avg Latency</div></div>
   <div class="stat-card"><div class="val" id="s-p95">--</div><div class="lbl">P95 Latency</div></div>
   <div class="stat-card"><div class="val" id="s-target">--</div><div class="lbl">&lt;600ms Target</div></div>
 </div>
 
-<div class="result-box" id="result-box">
-  <div class="result-title">Load Test Results</div>
-  <div id="result-rows"></div>
+<div class="live-log" id="live-log"></div>
 
-  <table class="calls-table" id="calls-table" style="display:none;">
-    <thead><tr><th>#</th><th>Prompt</th><th>Latency</th><th>Response</th><th>Status</th></tr></thead>
-    <tbody id="calls-tbody"></tbody>
-  </table>
+<div class="result-box" id="result-box">
+  <div class="result-title">Final Results</div>
+  <div id="result-rows"></div>
 </div>
 
 <div class="note">
-  Pipeline: Silero VAD → Deepgram STT → Groq Llama 3.1 8B → Deepgram Aura TTS<br>
-  20 calls run concurrently per batch. All API calls are real — check server logs for confirmation.
+  Pipeline: Silero VAD &rarr; Deepgram STT &rarr; Groq Llama 3.1 8B &rarr; Deepgram Aura TTS<br>
+  10 calls run concurrently per batch. All API calls are real.
 </div>
 
 <script>
+function addLog(text, color) {
+  const log = document.getElementById('live-log');
+  const ts = new Date().toLocaleTimeString('en-US', {hour12:false});
+  const div = document.createElement('div');
+  div.innerHTML = '<span style="color:var(--muted)">' + ts + '</span> <span style="color:' + (color||'var(--text)') + '">' + text + '</span>';
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
 async function runTest() {
   const btn = document.getElementById('launch-btn');
+  const log = document.getElementById('live-log');
   btn.disabled = true;
-  btn.textContent = 'Running 100 calls...';
-  document.getElementById('progress-text').textContent = 'Sending 100 real prompts through Groq + Deepgram TTS (20 concurrent)...';
+  btn.textContent = 'Running...';
+  log.style.display = 'block';
+  log.innerHTML = '';
   document.getElementById('result-box').classList.remove('show');
-
-  // Reset stats
-  ['s-total','s-success','s-avg','s-p95','s-target'].forEach(id => {
+  ['s-total','s-success','s-avg','s-p95','s-target'].forEach(function(id) {
     document.getElementById(id).textContent = '...';
     document.getElementById(id).className = 'val';
   });
 
+  addLog('Starting 100-call load test (10 concurrent per batch)...', 'var(--blue)');
+  addLog('Each call: real Groq LLM request + real Deepgram TTS generation', 'var(--muted)');
+
   try {
-    const resp = await fetch('http://localhost:8080/calls/load-test?count=100', {
-      method: 'POST',
-    });
+    const resp = await fetch('http://localhost:8080/calls/load-test?count=100');
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    var buffer = '';
 
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
+    while (true) {
+      var result = await reader.read();
+      if (result.done) break;
 
-    // Update stats
-    document.getElementById('s-total').textContent = data.total_calls;
-    document.getElementById('s-success').textContent = data.successful;
-    document.getElementById('s-success').className = 'val ' + (data.successful >= 90 ? 'green' : 'red');
-    document.getElementById('s-avg').textContent = data.avg_latency_ms + 'ms';
-    document.getElementById('s-avg').className = 'val ' + (data.avg_latency_ms < 600 ? 'green' : 'red');
-    document.getElementById('s-p95').textContent = data.p95_latency_ms + 'ms';
-    document.getElementById('s-p95').className = 'val ' + (data.p95_latency_ms < 600 ? 'green' : 'yellow');
-    document.getElementById('s-target').textContent = data.target_600ms ? 'PASS' : 'FAIL';
-    document.getElementById('s-target').className = 'val ' + (data.target_600ms ? 'green' : 'red');
+      buffer += decoder.decode(result.value, { stream: true });
+      var lines = buffer.split('\n');
+      buffer = lines.pop();
 
-    // Results table
-    const rows = [
-      ['Total Calls', data.total_calls],
-      ['Successful', data.successful, data.successful >= 90 ? 'pass' : 'fail'],
-      ['Failed', data.failed, data.failed <= 10 ? 'pass' : 'fail'],
-      ['Failure Rate', data.failure_rate_pct + '%', data.failure_rate_pct < 5 ? 'pass' : 'fail'],
-      ['Avg Latency', data.avg_latency_ms + 'ms', data.avg_latency_ms < 600 ? 'pass' : 'fail'],
-      ['P95 Latency', data.p95_latency_ms + 'ms', data.p95_latency_ms < 800 ? 'pass' : 'fail'],
-      ['Min Latency', data.min_latency_ms + 'ms'],
-      ['Max Latency', data.max_latency_ms + 'ms'],
-      ['Total Test Time', (data.total_time_ms / 1000).toFixed(1) + 's'],
-      ['<600ms Target', data.target_600ms ? 'PASSING' : 'OVER TARGET', data.target_600ms ? 'pass' : 'fail'],
-    ];
-    document.getElementById('result-rows').innerHTML = rows.map(r =>
-      `<div class="result-row"><span class="label">${r[0]}</span><span class="value ${r[2] || ''}">${r[1]}</span></div>`
-    ).join('');
+      for (var li = 0; li < lines.length; li++) {
+        var line = lines[li];
+        if (!line.startsWith('data: ')) continue;
 
-    // Individual calls
-    if (data.calls && data.calls.length > 0) {
-      document.getElementById('calls-tbody').innerHTML = data.calls.map(c =>
-        `<tr>
-          <td class="mono">${c.call_id}</td>
-          <td>${c.prompt || '--'}</td>
-          <td class="mono ${c.latency_ms > 0 && c.latency_ms < 600 ? 'pass' : 'fail'}">${c.latency_ms > 0 ? c.latency_ms + 'ms' : '--'}</td>
-          <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--muted);">${c.response || c.error || '--'}</td>
-          <td class="${c.status === 'completed' ? 'pass' : 'fail'}">${c.status}</td>
-        </tr>`
-      ).join('');
-      document.getElementById('calls-table').style.display = 'table';
+        var data = JSON.parse(line.slice(6));
+
+        // Update stat cards
+        document.getElementById('s-total').textContent = data.progress + ' / ' + data.total;
+        document.getElementById('s-success').textContent = data.successful;
+        document.getElementById('s-success').className = 'val green';
+        if (data.avg_latency_ms > 0) {
+          document.getElementById('s-avg').textContent = data.avg_latency_ms + 'ms';
+          document.getElementById('s-avg').className = 'val ' + (data.avg_latency_ms < 600 ? 'green' : 'red');
+          document.getElementById('s-p95').textContent = data.p95_latency_ms + 'ms';
+          document.getElementById('s-p95').className = 'val ' + (data.p95_latency_ms < 600 ? 'green' : 'yellow');
+          document.getElementById('s-target').textContent = data.target_600ms ? 'PASS' : 'FAIL';
+          document.getElementById('s-target').className = 'val ' + (data.target_600ms ? 'green' : 'red');
+        }
+
+        // Log each call from this batch
+        if (data.batch) {
+          for (var bi = 0; bi < data.batch.length; bi++) {
+            var c = data.batch[bi];
+            var num = c.call_id + 1;
+            var latColor = c.latency_ms < 600 ? 'var(--green)' : 'var(--red)';
+            var icon = c.status === 'completed' ? '&#10003;' : '&#10007;';
+            var respPreview = (c.response || c.error || '').substring(0, 70);
+            addLog(
+              icon + ' Call #' + num + ' | "' + c.prompt + '" &rarr; <span style="color:' + latColor + '">' + c.latency_ms + 'ms</span> | ' + respPreview,
+              c.status === 'completed' ? 'var(--text)' : 'var(--red)'
+            );
+          }
+          addLog('Batch complete: ' + data.progress + '/' + data.total + ' | avg ' + data.avg_latency_ms + 'ms | failed ' + data.failed, 'var(--muted)');
+          addLog('', '');
+        }
+
+        // Final
+        if (data.done) {
+          addLog('COMPLETE: ' + data.successful + '/' + data.total + ' successful | avg ' + data.avg_latency_ms + 'ms | p95 ' + data.p95_latency_ms + 'ms', 'var(--green)');
+
+          document.getElementById('s-total').textContent = data.total;
+
+          var rows = [
+            ['Total Calls', data.total],
+            ['Successful', data.successful, data.successful >= 90 ? 'pass' : 'fail'],
+            ['Failed', data.failed, data.failed <= 10 ? 'pass' : 'fail'],
+            ['Avg Latency', data.avg_latency_ms + 'ms', data.avg_latency_ms < 600 ? 'pass' : 'fail'],
+            ['P95 Latency', data.p95_latency_ms + 'ms'],
+            ['Min / Max', data.min_latency_ms + 'ms / ' + data.max_latency_ms + 'ms'],
+            ['<600ms Target', data.target_600ms ? 'PASSING' : 'OVER TARGET', data.target_600ms ? 'pass' : 'fail'],
+          ];
+          document.getElementById('result-rows').innerHTML = rows.map(function(r) {
+            return '<div class="result-row"><span class="label">' + r[0] + '</span><span class="value ' + (r[2]||'') + '">' + r[1] + '</span></div>';
+          }).join('');
+          document.getElementById('result-box').classList.add('show');
+        }
+      }
     }
-
-    document.getElementById('result-box').classList.add('show');
-    document.getElementById('progress-text').textContent = `Complete: ${data.successful} calls, avg ${data.avg_latency_ms}ms`;
-
   } catch (e) {
-    document.getElementById('progress-text').textContent = 'Error: ' + e.message + ' — ensure server is running on :8080';
+    addLog('Error: ' + e.message, 'var(--red)');
+    document.getElementById('progress-text').textContent = 'Error — ensure server is running on :8080';
     document.getElementById('progress-text').style.color = 'var(--red)';
   }
 
   btn.disabled = false;
   btn.textContent = 'Run Again';
+  document.getElementById('progress-text').textContent = 'Done';
 }
 </script>
 </body>
