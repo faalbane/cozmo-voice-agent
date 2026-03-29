@@ -92,6 +92,19 @@ async def list_calls():
     })
 
 
+@app.post("/calls/load-test")
+async def load_test(count: int = 100):
+    """Run a REAL load test: N concurrent calls through Groq LLM + Deepgram TTS.
+
+    Each call sends a real prompt, gets a real LLM response, runs it through
+    real TTS, and measures actual E2E latency. No mocking.
+    """
+    from src.load_test import run_load_test as _run_load_test
+
+    results = await _run_load_test(count=count, concurrency=10)
+    return JSONResponse(results)
+
+
 @app.delete("/calls/{call_id}")
 async def end_call(call_id: str):
     """End a specific call."""
@@ -109,19 +122,6 @@ async def healthz():
     status["active_calls"] = len(active_calls)
     code = 200 if status["status"] == "healthy" else 503
     return JSONResponse(status, status_code=code)
-
-
-@app.post("/calls/load-test")
-async def load_test(count: int = 100):
-    """Run a REAL load test: N concurrent calls through Groq LLM + Deepgram TTS.
-
-    Each call sends a real prompt, gets a real LLM response, runs it through
-    real TTS, and measures actual E2E latency. No mocking.
-    """
-    from src.load_test import run_load_test as _run_load_test
-
-    results = await _run_load_test(count=count, concurrency=20)
-    return JSONResponse(results)
 
 
 async def run_server(host: str = "0.0.0.0", port: int = 8080):
