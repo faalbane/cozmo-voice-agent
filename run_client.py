@@ -43,20 +43,19 @@ def start_http_server():
 
 def start_api_server():
     """Run the FastAPI server for concurrent calls in its own event loop."""
-    os.chdir(PROJECT_DIR)
     import uvicorn
     from src.server import app
     uvicorn.run(app, host="0.0.0.0", port=SERVER_PORT, log_level="info")
 
 
 async def main():
-    # Start HTTP file server (thread)
-    t1 = threading.Thread(target=start_http_server, daemon=True)
-    t1.start()
-
-    # Start FastAPI server (thread with its own event loop)
+    # Start FastAPI server first (thread with its own event loop)
     t2 = threading.Thread(target=start_api_server, daemon=True)
     t2.start()
+
+    # Start HTTP file server (thread) — must be after API server since it does chdir
+    t1 = threading.Thread(target=start_http_server, daemon=True)
+    t1.start()
 
     print()
     print("=" * 50)
