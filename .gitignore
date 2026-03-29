@@ -33,3 +33,4 @@ tests/load/results/
 .DS_Store
 Thumbs.db
 *.pdf
+.firebase/

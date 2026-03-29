@@ -1,99 +1,83 @@
-"""Entrypoint for the voice agent worker process."""
+"""Entrypoint for the voice agent.
 
+Usage:
+  # WebSocket mode (local dev, no cloud accounts needed):
+  python src/main.py
+
+  # Daily.co mode (production WebRTC / PSTN):
+  python src/main.py --mode daily --room-url https://your.daily.co/room --token TOKEN
+
+  # HTTP server mode (handles multiple concurrent calls via API):
+  python src/main.py --mode server --port 8080
+"""
+
+import argparse
+import asyncio
 import logging
 import os
+import sys
 
 from dotenv import load_dotenv
-from livekit.agents import (
-    AutoSubscribe,
-    JobContext,
-    JobProcess,
-    JobRequest,
-    WorkerOptions,
-    WorkerType,
-    cli,
-)
-
-from src.agent import entrypoint
-from src.knowledge.vectordb import KnowledgeBase
-from src.metrics.collector import MetricsCollector, start_metrics_server
-from src.resilience.recovery import check_worker_health
 
 load_dotenv()
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 
-async def request_fnc(req: JobRequest) -> AutoSubscribe:
-    """Decide whether to accept an incoming call job.
+def main():
+    parser = argparse.ArgumentParser(description="ShopEase Voice Agent (Pipecat)")
+    parser.add_argument(
+        "--mode",
+        choices=["websocket", "daily", "server"],
+        default="websocket",
+        help="Transport mode (default: websocket)",
+    )
+    parser.add_argument("--host", default="0.0.0.0", help="WebSocket/server host")
+    parser.add_argument("--port", type=int, default=8765, help="WebSocket/server port")
+    parser.add_argument("--room-url", help="Daily.co room URL (daily mode)")
+    parser.add_argument("--token", help="Daily.co token (daily mode)")
+    args = parser.parse_args()
 
-    Rejects if the worker is overloaded based on health checks.
-    """
-    if not check_worker_health():
-        logger.warning("Worker unhealthy, rejecting job")
-        await req.reject()
-        MetricsCollector().call_setup_failed()
-        return AutoSubscribe.AUDIO_ONLY
+    # Validate required API keys
+    required_keys = ["DEEPGRAM_API_KEY", "OPENAI_API_KEY", "CARTESIA_API_KEY"]
+    missing = [k for k in required_keys if not os.getenv(k)]
+    if missing:
+        logger.error(f"Missing required API keys: {', '.join(missing)}")
+        logger.error("Copy .env.example to .env and fill in your keys.")
+        sys.exit(1)
 
-    logger.info(f"Accepting job for room {req.room.name}")
-    await req.accept(entrypoint, auto_subscribe=AutoSubscribe.AUDIO_ONLY)
-    return AutoSubscribe.AUDIO_ONLY
+    if args.mode == "websocket":
+        logger.info("Starting in WebSocket mode (local dev)")
+        logger.info(f"Agent will listen on ws://{args.host}:{args.port}")
+        logger.info("Connect a web client to start a conversation.")
 
+        from src.agent import run_websocket_agent
 
-def prewarm_fnc(proc: JobProcess) -> None:
-    """Pre-initialize heavy resources before accepting calls.
+        asyncio.run(run_websocket_agent(host=args.host, port=args.port))
 
-    This runs once per subprocess and ensures the first call
-    doesn't pay cold-start latency for model loading.
-    """
-    logger.info("Pre-warming worker process...")
+    elif args.mode == "daily":
+        if not args.room_url or not args.token:
+            logger.error("Daily mode requires --room-url and --token")
+            sys.exit(1)
 
-    # Pre-load Silero VAD model (downloads on first use)
-    from livekit.plugins import silero
-    silero.VAD.load()
+        logger.info(f"Starting in Daily.co mode: {args.room_url}")
 
-    # Initialize knowledge base connection
-    try:
-        kb = KnowledgeBase()
-        logger.info(f"Knowledge base ready with {kb.collection_count()} documents")
-    except Exception as e:
-        logger.warning(f"Knowledge base not available during prewarm: {e}")
+        from src.agent import run_daily_agent
 
-    # Start Prometheus metrics server
-    metrics_port = int(os.getenv("METRICS_PORT", "9100"))
-    start_metrics_server(metrics_port)
+        asyncio.run(run_daily_agent(args.room_url, args.token))
 
-    logger.info("Worker pre-warm complete")
+    elif args.mode == "server":
+        logger.info(f"Starting HTTP server on {args.host}:{args.port}")
+        logger.info("POST /calls to create new agent sessions")
 
+        from src.server import run_server
 
-def load_fnc() -> float:
-    """Report current worker load as a normalized 0-1 value.
-
-    LiveKit uses this to decide whether to dispatch new jobs to this worker.
-    When load exceeds the threshold, the worker stops receiving new calls.
-    """
-    import psutil
-
-    cpu = psutil.cpu_percent(interval=0.1) / 100.0
-    memory = psutil.virtual_memory().percent / 100.0
-
-    # Weighted: CPU matters more for real-time audio processing
-    load = (cpu * 0.6) + (memory * 0.4)
-    return min(load, 1.0)
+        asyncio.run(run_server(host=args.host, port=args.port))
 
 
 if __name__ == "__main__":
-    load_threshold = float(os.getenv("AGENT_WORKER_LOAD_THRESHOLD", "0.65"))
-
-    cli.run_app(
-        WorkerOptions(
-            entrypoint_fnc=entrypoint,
-            request_fnc=request_fnc,
-            prewarm_fnc=prewarm_fnc,
-            load_fnc=load_fnc,
-            load_threshold=load_threshold,
-            worker_type=WorkerType.ROOM,
-            # Pre-fork 3 idle processes for instant call pickup
-            num_idle_processes=3,
-        ),
-    )
+    main()

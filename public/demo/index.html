@@ -604,11 +604,21 @@ body {
     </div>
     <div class="modal-body">
 
-      <div class="divider">LiveKit Connection</div>
+      <div class="divider">Connection Mode</div>
+      <div class="field">
+        <label>Dashboard Mode</label>
+        <select id="cfg-mode">
+          <option value="simulation">Simulation (no backend required)</option>
+          <option value="live">Live (connects via Cloud Function to LiveKit)</option>
+        </select>
+        <div class="hint">Live mode uses the server-side Cloud Function to securely connect to LiveKit. API keys are stored server-side via Firebase secrets — not in the browser.</div>
+      </div>
+
+      <div class="divider">Live Mode — API Keys (stored in Settings only for local dev)</div>
       <div class="field">
         <label>LiveKit URL</label>
         <input type="text" id="cfg-lk-url" placeholder="wss://your-project.livekit.cloud">
-        <div class="hint">WebSocket URL for your LiveKit server</div>
+        <div class="hint">Only needed for local development. Production uses Firebase secrets.</div>
       </div>
       <div class="field-group">
         <div class="field">
@@ -621,43 +631,21 @@ body {
         </div>
       </div>
 
-      <div class="divider">AI Pipeline</div>
+      <div class="divider">AI Pipeline (for agent workers — not used by dashboard)</div>
       <div class="field">
         <label>OpenAI API Key</label>
         <input type="password" id="cfg-openai" placeholder="sk-...">
-        <div class="hint">Used for LLM (GPT-4o-mini) and embeddings</div>
+        <div class="hint">Stored locally for passing to docker compose. Not sent to any server.</div>
       </div>
-      <div class="field">
-        <label>Deepgram API Key</label>
-        <input type="password" id="cfg-deepgram" placeholder="xxxxxxxxxxxxxxxx">
-        <div class="hint">Used for speech-to-text (Nova-2)</div>
-      </div>
-      <div class="field">
-        <label>Cartesia API Key</label>
-        <input type="password" id="cfg-cartesia" placeholder="xxxxxxxxxxxxxxxx">
-        <div class="hint">Used for text-to-speech (Sonic)</div>
-      </div>
-
-      <div class="divider">Services</div>
       <div class="field-group">
         <div class="field">
-          <label>Prometheus URL</label>
-          <input type="text" id="cfg-prom" placeholder="http://localhost:9090">
+          <label>Deepgram API Key</label>
+          <input type="password" id="cfg-deepgram" placeholder="xxxxxxxxxxxxxxxx">
         </div>
         <div class="field">
-          <label>Redis URL</label>
-          <input type="text" id="cfg-redis" placeholder="redis://localhost:6379">
+          <label>Cartesia API Key</label>
+          <input type="password" id="cfg-cartesia" placeholder="xxxxxxxxxxxxxxxx">
         </div>
-      </div>
-
-      <div class="divider">Mode</div>
-      <div class="field">
-        <label>Dashboard Mode</label>
-        <select id="cfg-mode">
-          <option value="simulation">Simulation (no backend required)</option>
-          <option value="live">Live (connects to real services)</option>
-        </select>
-        <div class="hint">Simulation mode runs a realistic demo without any backend services</div>
       </div>
     </div>
     <div class="modal-footer">
@@ -790,6 +778,7 @@ async function connect() {
 function disconnect() {
   connected = false;
   if (simInterval) { clearInterval(simInterval); simInterval = null; }
+  if (livePolling) { clearInterval(livePolling); livePolling = null; }
   if (lkRoom) { lkRoom.disconnect(); lkRoom = null; }
 
   document.getElementById('conn-dot').classList.remove('live');
@@ -801,57 +790,94 @@ function disconnect() {
   logEvent('disconnect', 'Dashboard disconnected');
 }
 
-// ===== LiveKit Live Mode =====
-async function connectLiveKit(cfg) {
-  // In live mode, we'd monitor rooms via LiveKit server API.
-  // Since this is a static page, we use the JS SDK to connect to a monitor room
-  // and the LiveKit HTTP API to list rooms.
-  logEvent('livekit', 'Live mode active — polling LiveKit API for room data');
+// ===== LiveKit Live Mode (via Cloud Function) =====
+let livePolling = null;
 
-  // Poll rooms via LiveKit REST API (requires CORS headers on the server)
+async function connectLiveKit(cfg) {
+  logEvent('livekit', 'Connecting to LiveKit via Cloud Function proxy...');
+
+  // First, health check
+  try {
+    const healthResp = await fetch('/api/health');
+    const health = await healthResp.json();
+    if (!health.ok) throw new Error(health.error || 'Health check failed');
+    logEvent('livekit', `Connected! LiveKit has ${health.roomCount} rooms`);
+  } catch (e) {
+    throw new Error(`Cloud Function unreachable: ${e.message}. Deploy functions first: firebase deploy --only functions`);
+  }
+
+  // Start polling rooms via our secure Cloud Function
   const pollRooms = async () => {
     try {
-      const resp = await fetch(cfg.lkUrl.replace('wss://', 'https://').replace('ws://', 'http://') + '/twirp/livekit.RoomService/ListRooms', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + cfg.lkKey,
-        },
-        body: '{}',
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        updateFromLiveRooms(data.rooms || []);
+      const resp = await fetch('/api/rooms');
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+
+      if (data.ok) {
+        updateFromLiveRooms(data.rooms || [], data.activeCallCount || 0);
       }
     } catch (e) {
-      // Silently fall through — CORS may block this from a static page
+      logEvent('error', `Poll failed: ${e.message}`);
     }
   };
 
-  simInterval = setInterval(pollRooms, 3000);
+  livePolling = setInterval(pollRooms, 3000);
   await pollRooms();
 }
 
-function updateFromLiveRooms(rooms) {
-  const activeCalls = rooms.filter(r => r.num_participants > 0);
+function updateFromLiveRooms(rooms, activeCount) {
+  const activeCalls = rooms.filter(r => r.numParticipants > 0);
   document.getElementById('s-active').textContent = activeCalls.length;
-  // Update table with real room data
+  document.getElementById('s-total').textContent = rooms.length;
+
+  // Update calls table with real room + participant data
   const tbody = document.getElementById('calls-tbody');
   if (activeCalls.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">No active calls</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">No active calls — waiting for inbound calls via SIP trunk</td></tr>';
     return;
   }
-  tbody.innerHTML = activeCalls.map(r => `
-    <tr>
+
+  tbody.innerHTML = activeCalls.map(r => {
+    const caller = r.participants.find(p => !p.identity.startsWith('agent'));
+    const agent = r.participants.find(p => p.identity.startsWith('agent'));
+    const dur = Math.floor(Date.now() / 1000 - r.creationTime);
+    return `<tr>
       <td><span class="pdot on"></span></td>
       <td class="mono">${r.name}</td>
-      <td>${r.num_participants} participants</td>
-      <td class="mono">--</td>
-      <td class="mono">--</td>
-      <td>${formatDuration(Math.floor((Date.now()/1000) - r.creation_time))}</td>
+      <td>${caller ? caller.identity : r.numParticipants + ' participants'}</td>
+      <td class="mono">${agent ? agent.identity : '--'}</td>
+      <td class="mono" style="color:var(--muted)">--</td>
+      <td class="mono">${formatDuration(dur)}</td>
       <td><span class="badge active">active</span></td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
+
+  // Update worker health from real participant distribution
+  const workerCounts = {};
+  activeCalls.forEach(r => {
+    const agent = r.participants.find(p => p.identity.startsWith('agent'));
+    if (agent) {
+      const wk = agent.identity;
+      workerCounts[wk] = (workerCounts[wk] || 0) + 1;
+    }
+  });
+
+  const wg = document.getElementById('workers-grid');
+  if (Object.keys(workerCounts).length > 0) {
+    wg.innerHTML = Object.entries(workerCounts).map(([w, count]) => {
+      const load = Math.min(95, count * 15 + 20);
+      const color = load > 80 ? 'var(--red)' : load > 60 ? 'var(--yellow)' : 'var(--green)';
+      return `<div style="background:var(--bg);border-radius:8px;padding:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
+          <span class="mono">${w}</span>
+          <span style="color:${color}">${count} calls</span>
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${load}%;background:${color};border-radius:3px;transition:width .5s;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
 }
 
 // ===== Simulation Mode =====

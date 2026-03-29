@@ -96,11 +96,15 @@ packet_loss_pct = Histogram(
 class MetricsCollector:
     """Convenience wrapper for recording voice agent metrics."""
 
-    def record_pipeline_metrics(self, metrics) -> None:
-        """Record metrics from LiveKit's on_metrics_collected callback.
+    def record_e2e_latency(self, seconds: float) -> None:
+        """Record end-to-end latency for a single conversational turn."""
+        e2e_latency.observe(seconds)
+        agent_response_time.observe(seconds)
 
-        The metrics object contains per-turn timing breakdowns from
-        the VoicePipelineAgent pipeline.
+    def record_pipeline_metrics(self, metrics) -> None:
+        """Record metrics from pipeline callbacks.
+
+        The metrics object contains per-turn timing breakdowns.
         """
         try:
             if hasattr(metrics, "stt_duration"):

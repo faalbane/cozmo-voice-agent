@@ -2,207 +2,165 @@
 
 Production-ready voice AI agent system handling **100 concurrent PSTN calls** with **<600ms average round-trip latency**.
 
-Built with LiveKit Agents SDK, Deepgram STT, OpenAI GPT-4o-mini, and Cartesia TTS.
+Built with **Pipecat**, Deepgram STT, OpenAI GPT-4o-mini, and Cartesia TTS.
+
+## Quick Start (3 minutes)
+
+### 1. Install & configure
+
+```bash
+pip install -e ".[dev]"
+cp .env.example .env
+# Edit .env with your API keys (Deepgram, OpenAI, Cartesia)
+```
+
+### 2. Run the agent
+
+```bash
+python src/main.py
+```
+
+### 3. Talk to it
+
+Open `public/client/index.html` in your browser, click the phone button, and speak.
+
+That's it. No cloud accounts, no Docker, no SIP trunks needed for the basic demo.
+
+---
 
 ## Architecture
 
 ```
-PSTN Caller → Twilio SIP → LiveKit SIP Bridge → LiveKit SFU → Agent Worker Pool
-                                                                    │
-                                                    ┌───────────────┼───────────────┐
-                                                    ▼               ▼               ▼
-                                                Deepgram        GPT-4o-mini     Cartesia
-                                                (STT)           (LLM)           (TTS)
-                                                                    │
-                                                                ChromaDB
-                                                            (Knowledge Base)
+                    ┌─ WebSocket ──┐      ┌─ Daily.co WebRTC ──┐
+ Browser Client ───►│  Transport   │      │    Transport        │◄─── PSTN (Twilio)
+                    └──────┬───────┘      └────────┬────────────┘
+                           │                       │
+                           ▼                       ▼
+                    ┌──────────────────────────────────────┐
+                    │         Pipecat Pipeline              │
+                    │                                      │
+                    │  Silero VAD → Deepgram STT           │
+                    │       → OpenAI GPT-4o-mini           │
+                    │            → Cartesia TTS            │
+                    │                 │                     │
+                    │           ChromaDB                    │
+                    │        (Knowledge Base)               │
+                    └──────────────────────────────────────┘
+                           │              │
+                     Redis (State)   Prometheus → Grafana
 ```
 
-**Key design decisions:**
-- **LiveKit over Pipecat**: Native SIP bridge, built-in worker scaling, subprocess isolation per call
-- **Streaming everything**: STT, LLM, and TTS all stream to minimize time-to-first-byte
-- **Pre-warmed workers**: 3 idle processes ready for instant call pickup (zero cold-start)
+## Three Run Modes
 
-See [docs/architecture.md](docs/architecture.md) for the full system diagram.
+| Mode | Command | Use Case |
+|---|---|---|
+| **WebSocket** | `python src/main.py` | Local dev, browser demo. No cloud needed. |
+| **Server** | `python src/main.py --mode server` | Production. HTTP API creates per-call pipelines. |
+| **Daily** | `python src/main.py --mode daily --room-url URL --token TOKEN` | WebRTC with PSTN via Twilio. |
+
+## API Keys
+
+| Service | Key | Get it at |
+|---|---|---|
+| Deepgram | `DEEPGRAM_API_KEY` | [deepgram.com](https://deepgram.com) (free tier) |
+| OpenAI | `OPENAI_API_KEY` | [platform.openai.com](https://platform.openai.com) |
+| Cartesia | `CARTESIA_API_KEY` | [cartesia.ai](https://cartesia.ai) (free tier) |
+| Daily.co | `DAILY_API_KEY` | [daily.co](https://daily.co) (optional, for WebRTC/PSTN) |
+
+## Scaling to 100 Concurrent Calls
+
+The server mode (`--mode server`) handles concurrency:
+
+```bash
+# Start the agent server
+python src/main.py --mode server --port 8080
+
+# Create a new call (returns a WebSocket URL)
+curl -X POST http://localhost:8080/calls
+# → {"call_id": "call-a1b2c3d4", "websocket_url": "ws://0.0.0.0:8766"}
+
+# List active calls
+curl http://localhost:8080/calls
+
+# End a call
+curl -X DELETE http://localhost:8080/calls/call-a1b2c3d4
+```
+
+Each call gets its own Pipecat pipeline in an async task — full isolation.
+
+For Docker-based scaling:
+
+```bash
+docker compose up -d
+# Agent server on :8080, Grafana on :3000, Prometheus on :9090
+```
 
 ## Latency Budget
 
 | Stage | Target | Provider |
 |---|---|---|
-| VAD (speech detection) | ~50ms | Silero (local) |
-| STT (transcription) | ~150ms | Deepgram Nova-2 |
-| LLM (response generation) | ~200ms | GPT-4o-mini |
-| TTS (speech synthesis) | ~100ms | Cartesia Sonic |
-| Network overhead | ~100ms | LiveKit SFU |
+| VAD | ~50ms | Silero (local) |
+| STT | ~150ms | Deepgram Nova-2 |
+| LLM TTFT | ~200ms | GPT-4o-mini |
+| TTS TTFB | ~100ms | Cartesia Sonic |
+| Network | ~100ms | WebSocket/WebRTC |
 | **Total** | **~600ms** | |
 
-## Quick Start
+## Knowledge Base
 
-### Prerequisites
+The agent has a ChromaDB-backed knowledge base with e-commerce documents:
+- Refund policy, shipping info, product details
+- Objection handling (cancellation scenarios)
 
-- Python 3.11+
-- Docker & Docker Compose
-- API keys (see below)
+Seed it: `python scripts/seed_knowledge.py`
 
-### 1. Clone & Configure
-
-```bash
-cp .env.example .env
-# Edit .env with your API keys
-```
-
-**Required API keys:**
-
-| Service | Key | Get it at |
-|---|---|---|
-| LiveKit | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | [livekit.io](https://livekit.io) |
-| Twilio | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | [twilio.com](https://twilio.com) |
-| Deepgram | `DEEPGRAM_API_KEY` | [deepgram.com](https://deepgram.com) |
-| OpenAI | `OPENAI_API_KEY` | [platform.openai.com](https://platform.openai.com) |
-| Cartesia | `CARTESIA_API_KEY` | [cartesia.ai](https://cartesia.ai) |
-
-### 2. Setup
-
-```bash
-# One-command setup (installs deps, starts infra, seeds knowledge base)
-bash scripts/setup.sh
-```
-
-Or manually:
-
-```bash
-pip install -e ".[dev]"
-docker compose up -d redis chromadb prometheus grafana
-python scripts/seed_knowledge.py
-```
-
-### 3. Configure Twilio SIP Trunk
-
-```bash
-# Set your LiveKit SIP endpoint
-export LIVEKIT_SIP_URI=sip:your-project.sip.livekit.cloud
-bash infra/twilio-setup.sh
-
-# Create LiveKit SIP trunk and dispatch rules
-lk sip trunk create infra/sip-trunk-config.json
-lk sip dispatch create infra/sip-trunk-config.json
-```
-
-### 4. Run the Agent
-
-```bash
-# Development mode (connects to LiveKit, hot reloads)
-python src/main.py dev
-
-# Production mode
-docker compose up -d
-```
-
-### 5. Start the Dashboard
-
-```bash
-make dashboard
-# Open http://localhost:8080
-```
-
-### 6. Test It
-
-Call your Twilio phone number. The agent will greet you:
-
-> "Hello! Thank you for calling ShopEase. My name is Alex. How can I help you today?"
-
-Try asking:
-- "What's your refund policy?"
-- "I want to cancel my order" (objection handling)
-- "How long does shipping take?"
+Try asking: *"What's your refund policy?"* or *"I want to cancel my subscription"*
 
 ## Monitoring
 
-- **Live Dashboard**: http://localhost:8080 — real-time active calls, worker health
-- **Grafana**: http://localhost:3000 (admin/admin) — latency percentiles, MOS scores, call volume
-- **Prometheus**: http://localhost:9090 — raw metrics
-
-### Key Metrics
-
-| Metric | Description |
-|---|---|
-| `voice_agent_e2e_latency_seconds` | End-to-end response latency (histogram) |
-| `voice_agent_concurrent_calls` | Active calls (gauge) |
-| `voice_agent_mos_score` | Estimated Mean Opinion Score (histogram) |
-| `voice_agent_call_setup_failures_total` | Failed call setups (counter) |
-| `voice_agent_llm_ttft_seconds` | LLM time to first token (histogram) |
-
-## Load Testing
-
-```bash
-# Run progressive load test (10 → 25 → 50 → 75 → 100 concurrent calls)
-bash scripts/run_load_test.sh
-
-# Results saved to tests/load/results/load_test_report.json
-```
-
-## Scaling
-
-Scale agent workers to handle more concurrent calls:
-
-```bash
-# Scale to 5 workers (handles ~75-100 calls)
-AGENT_REPLICAS=5 docker compose up -d --scale agent=5
-
-# Scale to 7 workers (handles 100+ calls)
-AGENT_REPLICAS=7 docker compose up -d --scale agent=7
-```
-
-See [docs/scaling-plan.md](docs/scaling-plan.md) for the full scaling architecture.
+- **Grafana**: http://localhost:3000 (admin/admin)
+- **Prometheus**: http://localhost:9090
+- **Health check**: `curl http://localhost:8080/healthz`
 
 ## Project Structure
 
 ```
 ├── src/
-│   ├── main.py              # Worker entrypoint
-│   ├── agent.py             # VoicePipelineAgent setup
-│   ├── dashboard.py         # Live monitoring UI
+│   ├── main.py              # Entrypoint (websocket/server/daily modes)
+│   ├── agent.py             # Pipecat pipeline (STT→LLM→TTS)
+│   ├── server.py            # HTTP server for concurrent calls
+│   ├── dashboard.py         # Live monitoring dashboard
 │   ├── pipeline/            # STT, LLM, TTS, VAD configs
 │   ├── knowledge/           # ChromaDB vector search + documents
-│   ├── tools/               # LLM function tools
+│   ├── tools/               # LLM function tools (knowledge lookup)
 │   ├── metrics/             # Prometheus instrumentation
 │   ├── state/               # Redis call tracking
 │   └── resilience/          # Health checks, circuit breaker
-├── infra/                   # LiveKit, Twilio, Prometheus, Grafana configs
+├── public/
+│   ├── index.html           # Project overview site
+│   ├── client/index.html    # Browser voice client
+│   └── demo/index.html      # Live monitoring dashboard
+├── infra/                   # Prometheus, Grafana, Redis configs
 ├── docs/                    # Architecture diagrams & write-ups
 ├── tests/                   # Unit, integration, and load tests
-└── scripts/                 # Setup, seeding, and load test scripts
+└── scripts/                 # Setup, seeding, load test scripts
 ```
 
 ## Tests
 
 ```bash
-# Unit tests
-pytest tests/ -v
-
-# With coverage
 pytest tests/ -v --cov=src
 ```
 
 ## Documentation
 
-- [System Architecture](docs/architecture.md) — high-level component diagram
-- [Call Flow](docs/call-flow.md) — media & control plane sequence diagram
-- [Scaling Plan](docs/scaling-plan.md) — tier-based scaling strategy
-- [LiveKit vs Pipecat](docs/livekit-vs-pipecat.md) — framework comparison
-- [Scaling to 1,000 Calls](docs/scaling-to-1000.md) — bottlenecks and mitigations
+- [System Architecture](docs/architecture.md)
+- [Call Flow](docs/call-flow.md)
+- [Scaling Plan](docs/scaling-plan.md)
+- [LiveKit vs Pipecat](docs/livekit-vs-pipecat.md)
+- [Scaling to 1,000 Calls](docs/scaling-to-1000.md)
 
-## Features Checklist
+## Live Demo
 
-- [x] **Telephony Integration**: Twilio SIP trunk → LiveKit SIP Bridge → Agent
-- [x] **Conversational AI**: GPT-4o-mini with function calling, natural turn-taking
-- [x] **Barge-in**: Interruptible TTS with configurable speech detection threshold
-- [x] **Knowledge Base**: ChromaDB vector search over company documents
-- [x] **Objection Handling**: Cancellation scenario with empathetic de-escalation
-- [x] **Latency Instrumentation**: Per-turn STT/LLM/TTS breakdown via Prometheus
-- [x] **Call Quality Metrics**: MOS estimation, jitter, packet loss tracking
-- [x] **Scalability**: Load-aware worker dispatch, horizontal scaling to 100+ calls
-- [x] **Failure Recovery**: LLM timeout fallback, circuit breaker, health checks
-- [x] **Live Dashboard**: Real-time WebSocket-powered call monitoring UI
-- [x] **Load Testing**: Progressive 10→100 concurrent call test harness
-- [x] **Architecture Docs**: 3 diagrams + LiveKit vs Pipecat + scaling 1-pager
+- **Project overview**: https://cozmo-voice-agent.web.app
+- **Interactive dashboard**: https://cozmo-voice-agent.web.app/demo

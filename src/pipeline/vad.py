@@ -1,16 +1,12 @@
-from livekit.plugins import silero
+"""Silero VAD configuration for Pipecat."""
+
+from pipecat.audio.vad.silero import SileroVADAnalyzer
 
 
-def create_vad() -> silero.VAD:
-    """Create Silero VAD tuned for telephony turn-taking.
-
-    Parameters are tuned to balance responsiveness with avoiding
-    false interrupts from background noise on phone lines.
-    """
-    return silero.VAD.load(
-        min_speech_duration=0.1,
-        min_silence_duration=0.5,
-        padding_duration=0.1,
-        max_buffered_speech=60.0,
-        activation_threshold=0.5,
+def create_vad() -> SileroVADAnalyzer:
+    return SileroVADAnalyzer(
+        params=SileroVADAnalyzer.VADParams(
+            min_volume=0.4,
+            stop_secs=0.5,
+        )
     )

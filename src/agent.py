@@ -1,83 +1,202 @@
-"""Core voice agent: wires VoicePipelineAgent with STT/LLM/TTS and event hooks."""
+"""Core voice agent built with Pipecat.
 
+Supports two transport modes:
+  - WebSocket: for local dev and web-based demo (no external accounts needed)
+  - Daily: for production WebRTC with PSTN via Twilio SIP
+"""
+
+import asyncio
 import logging
+import os
+import time
 
-from livekit.agents import JobContext, AgentSession, llm
-from livekit.agents.voice import AgentTranscriptionOptions
-from livekit.agents.voice import VoicePipelineAgent
-from livekit import rtc
+from pipecat.audio.vad.silero import SileroVADAnalyzer
+from pipecat.frames.frames import EndFrame, LLMMessagesFrame
+from pipecat.pipeline.pipeline import Pipeline
+from pipecat.pipeline.runner import PipelineRunner
+from pipecat.pipeline.task import PipelineParams, PipelineTask
+from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+from pipecat.services.cartesia import CartesiaTTSService
+from pipecat.services.deepgram import DeepgramSTTService
+from pipecat.services.openai import OpenAILLMService
 
-from src.pipeline.stt import create_stt
-from src.pipeline.llm import create_llm
-from src.pipeline.tts import create_tts
-from src.pipeline.vad import create_vad
 from src.prompts.system_prompt import SYSTEM_PROMPT
-from src.tools.knowledge_lookup import AgentTools
-from src.knowledge.vectordb import KnowledgeBase
+from src.tools.knowledge_lookup import register_knowledge_tools
 from src.metrics.collector import MetricsCollector
 
 logger = logging.getLogger(__name__)
 
 
-async def entrypoint(ctx: JobContext) -> None:
-    """Main entrypoint for each voice agent session (one per call)."""
-    logger.info(f"Agent session starting for room {ctx.room.name}")
+async def create_agent_pipeline(transport, call_id: str = "local"):
+    """Build the Pipecat voice pipeline with STT → LLM → TTS.
 
-    # Connect to the LiveKit room
-    await ctx.connect()
-
-    # Initialize knowledge base and tools
-    kb = KnowledgeBase()
-    tools = AgentTools(knowledge_base=kb)
-
-    # Initialize metrics collector
+    Args:
+        transport: A Pipecat transport (WebSocket, Daily, or local).
+        call_id: Identifier for this call session.
+    """
     metrics = MetricsCollector()
+    metrics.call_started(call_id)
 
-    # Build the initial chat context with system prompt
-    initial_ctx = llm.ChatContext()
-    initial_ctx.append(role="system", text=SYSTEM_PROMPT)
+    # --- STT ---
+    stt = DeepgramSTTService(
+        api_key=os.getenv("DEEPGRAM_API_KEY"),
+        name="deepgram-stt",
+    )
 
-    # Create the voice pipeline agent
-    agent = VoicePipelineAgent(
-        vad=create_vad(),
-        stt=create_stt(),
-        llm=create_llm(),
-        tts=create_tts(),
-        fnc_ctx=tools,
-        chat_ctx=initial_ctx,
-        # Barge-in: allow interruption after detecting 0.5s of user speech
-        interrupt_speech_duration=0.5,
-        interrupt_min_words=2,
-        # Turn-taking: minimum silence before considering end of turn
-        min_endpointing_delay=0.5,
-        # Transcription options for observability
-        transcription=AgentTranscriptionOptions(
-            user_transcription=True,
-            agent_transcription=True,
+    # --- LLM ---
+    llm = OpenAILLMService(
+        api_key=os.getenv("OPENAI_API_KEY"),
+        model="gpt-4o-mini",
+        name="openai-llm",
+    )
+
+    # --- TTS ---
+    tts = CartesiaTTSService(
+        api_key=os.getenv("CARTESIA_API_KEY"),
+        voice_id="71a7ad14-091c-4e8e-a314-022ece01c121",  # British Lady
+        name="cartesia-tts",
+    )
+
+    # --- Conversation context ---
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    context = OpenAILLMContext(messages=messages)
+    context_aggregator = llm.create_context_aggregator(context)
+
+    # --- Register knowledge base tools ---
+    register_knowledge_tools(llm, context)
+
+    # --- Timing hooks for latency instrumentation ---
+    turn_start = [0.0]
+
+    @stt.event_handler("on_transcript")
+    async def on_transcript(transcript):
+        if transcript.strip():
+            turn_start[0] = time.monotonic()
+
+    # --- Build pipeline ---
+    pipeline = Pipeline(
+        [
+            transport.input(),
+            stt,
+            context_aggregator.user(),
+            llm,
+            tts,
+            transport.output(),
+            context_aggregator.assistant(),
+        ]
+    )
+
+    task = PipelineTask(
+        pipeline,
+        params=PipelineParams(
+            allow_interruptions=True,
+            enable_metrics=True,
         ),
     )
 
-    # Register metrics collection callback
-    @agent.on("metrics_collected")
-    def on_metrics(agent_metrics):
-        metrics.record_pipeline_metrics(agent_metrics)
+    # --- Metrics callback ---
+    @task.event_handler("on_metrics")
+    async def on_metrics(metrics_data):
+        try:
+            if hasattr(metrics_data, "ttfb") and turn_start[0] > 0:
+                e2e = time.monotonic() - turn_start[0]
+                metrics.record_e2e_latency(e2e)
+        except Exception as e:
+            logger.debug(f"Metrics recording error: {e}")
 
-    # Track call state
-    call_sid = ctx.room.name
-    metrics.call_started(call_sid)
+    # --- Send initial greeting ---
+    @transport.event_handler("on_first_participant_joined")
+    async def on_first_participant(transport, participant):
+        logger.info(f"Participant joined call {call_id}")
+        await task.queue_frames(
+            [
+                LLMMessagesFrame(
+                    messages=[
+                        *messages,
+                        {
+                            "role": "assistant",
+                            "content": "Hello! Thank you for calling ShopEase. My name is Alex. How can I help you today?",
+                        },
+                    ]
+                )
+            ]
+        )
 
-    @ctx.on("disconnect")
-    def on_disconnect():
-        metrics.call_ended(call_sid)
-        logger.info(f"Call ended: {call_sid}")
+    @transport.event_handler("on_participant_left")
+    async def on_participant_left(transport, participant, reason):
+        logger.info(f"Participant left call {call_id}: {reason}")
+        metrics.call_ended(call_id)
+        await task.queue_frame(EndFrame())
 
-    # Wait for a participant (the caller) to join
-    participant = await ctx.wait_for_participant()
-    logger.info(f"Caller joined: {participant.identity} in room {call_sid}")
+    @transport.event_handler("on_client_connected")
+    async def on_client_connected(transport, client):
+        logger.info(f"Client connected to call {call_id}")
 
-    # Start the agent and greet the caller
-    agent.start(ctx.room, participant)
-    await agent.say(
-        "Hello! Thank you for calling ShopEase. My name is Alex. How can I help you today?",
-        allow_interruptions=True,
+    @transport.event_handler("on_client_disconnected")
+    async def on_client_disconnected(transport, client):
+        logger.info(f"Client disconnected from call {call_id}")
+        metrics.call_ended(call_id)
+        await task.queue_frame(EndFrame())
+
+    return task
+
+
+async def run_websocket_agent(host: str = "0.0.0.0", port: int = 8765):
+    """Run the agent with a WebSocket transport (local dev / web demo)."""
+    from pipecat.transports.network.websocket_server import (
+        WebSocketServerParams,
+        WebSocketServerTransport,
     )
+
+    transport = WebSocketServerTransport(
+        params=WebSocketServerParams(
+            host=host,
+            port=port,
+            audio_in_enabled=True,
+            audio_out_enabled=True,
+            add_wav_header=True,
+            vad_enabled=True,
+            vad_analyzer=SileroVADAnalyzer(
+                params=SileroVADAnalyzer.VADParams(
+                    min_volume=0.4,
+                    stop_secs=0.5,
+                )
+            ),
+            vad_audio_passthrough=True,
+        )
+    )
+
+    logger.info(f"Starting WebSocket voice agent on ws://{host}:{port}")
+    task = await create_agent_pipeline(transport, call_id=f"ws-{port}")
+
+    runner = PipelineRunner()
+    await runner.run(task)
+
+
+async def run_daily_agent(room_url: str, token: str, call_id: str = "daily"):
+    """Run the agent with Daily.co WebRTC transport (production / PSTN)."""
+    from pipecat.transports.services.daily import DailyParams, DailyTransport
+
+    transport = DailyTransport(
+        room_url=room_url,
+        token=token,
+        bot_name="ShopEase Agent",
+        params=DailyParams(
+            audio_in_enabled=True,
+            audio_out_enabled=True,
+            vad_enabled=True,
+            vad_analyzer=SileroVADAnalyzer(
+                params=SileroVADAnalyzer.VADParams(
+                    min_volume=0.4,
+                    stop_secs=0.5,
+                )
+            ),
+            vad_audio_passthrough=True,
+        ),
+    )
+
+    logger.info(f"Starting Daily.co voice agent for room: {room_url}")
+    task = await create_agent_pipeline(transport, call_id=call_id)
+
+    runner = PipelineRunner()
+    await runner.run(task)

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShopEase — Talk to Agent</title>
+<style>
+:root { --bg:#0a0c10; --card:#171a22; --border:#252833; --text:#e4e7f0; --muted:#6b7089; --green:#22c55e; --red:#ef4444; --blue:#3b82f6; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; align-items:center; min-height:100vh; }
+.container { text-align:center; max-width:400px; padding:24px; }
+h1 { font-size:22px; margin-bottom:8px; }
+p { color:var(--muted); font-size:14px; margin-bottom:32px; }
+.call-btn {
+  width:120px; height:120px; border-radius:50%; border:none;
+  font-size:40px; cursor:pointer; transition:all .2s;
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto 24px;
+}
+.call-btn.idle { background:var(--green); color:#fff; }
+.call-btn.idle:hover { transform:scale(1.05); background:#16a34a; }
+.call-btn.active { background:var(--red); color:#fff; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)}50%{box-shadow:0 0 0 20px rgba(239,68,68,0)} }
+.status { font-size:14px; color:var(--muted); margin-bottom:16px; }
+.status.connected { color:var(--green); }
+.status.error { color:var(--red); }
+.ws-input {
+  width:100%; padding:10px 14px; border-radius:8px;
+  border:1px solid var(--border); background:var(--card);
+  color:var(--text); font-size:13px; font-family:monospace;
+  text-align:center; margin-bottom:12px; outline:none;
+}
+.ws-input:focus { border-color:var(--blue); }
+.hint { font-size:11px; color:var(--muted); }
+.viz {
+  width:200px; height:60px; margin:16px auto;
+  display:flex; align-items:flex-end; justify-content:center; gap:2px;
+}
+.viz-bar {
+  width:4px; background:var(--green); border-radius:2px;
+  transition:height .1s; min-height:2px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>ShopEase Voice Agent</h1>
+  <p>Click the button and speak to the AI customer support agent. Try asking about refund policies or say you want to cancel.</p>
+
+  <input class="ws-input" id="ws-url" value="ws://localhost:8765" placeholder="WebSocket URL">
+
+  <div class="viz" id="viz"></div>
+
+  <button class="call-btn idle" id="call-btn" onclick="toggleCall()">&#128222;</button>
+
+  <div class="status" id="status">Ready — click to start</div>
+
+  <div class="hint">Uses your microphone. Requires agent running locally.</div>
+</div>
+
+<script>
+let ws = null;
+let audioCtx = null;
+let mediaStream = null;
+let scriptNode = null;
+let active = false;
+
+// Create visualizer bars
+const viz = document.getElementById('viz');
+for (let i = 0; i < 32; i++) {
+  const bar = document.createElement('div');
+  bar.className = 'viz-bar';
+  bar.style.height = '2px';
+  viz.appendChild(bar);
+}
+const bars = viz.querySelectorAll('.viz-bar');
+
+function setStatus(text, cls='') {
+  const el = document.getElementById('status');
+  el.textContent = text;
+  el.className = 'status ' + cls;
+}
+
+async function toggleCall() {
+  if (active) { endCall(); }
+  else { startCall(); }
+}
+
+async function startCall() {
+  const url = document.getElementById('ws-url').value;
+  setStatus('Connecting...', '');
+
+  try {
+    // Get microphone
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioCtx = new AudioContext({ sampleRate: 16000 });
+
+    // Connect to WebSocket
+    ws = new WebSocket(url);
+    ws.binaryType = 'arraybuffer';
+
+    ws.onopen = () => {
+      setStatus('Connected — speak now', 'connected');
+      document.getElementById('call-btn').className = 'call-btn active';
+      active = true;
+      startSending();
+    };
+
+    ws.onmessage = (e) => {
+      if (e.data instanceof ArrayBuffer) {
+        playAudio(e.data);
+      }
+    };
+
+    ws.onclose = () => {
+      if (active) endCall();
+    };
+
+    ws.onerror = (e) => {
+      setStatus('Connection failed — is the agent running?', 'error');
+    };
+
+  } catch (e) {
+    setStatus('Microphone access denied', 'error');
+  }
+}
+
+function startSending() {
+  const source = audioCtx.createMediaStreamSource(mediaStream);
+  scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
+
+  scriptNode.onaudioprocess = (e) => {
+    if (!ws || ws.readyState !== 1) return;
+
+    const input = e.inputBuffer.getChannelData(0);
+
+    // Visualize
+    const step = Math.floor(input.length / bars.length);
+    for (let i = 0; i < bars.length; i++) {
+      let sum = 0;
+      for (let j = 0; j < step; j++) sum += Math.abs(input[i * step + j]);
+      const avg = sum / step;
+      bars[i].style.height = Math.max(2, avg * 300) + 'px';
+    }
+
+    // Convert float32 to int16 PCM
+    const pcm = new Int16Array(input.length);
+    for (let i = 0; i < input.length; i++) {
+      pcm[i] = Math.max(-32768, Math.min(32767, Math.round(input[i] * 32767)));
+    }
+    ws.send(pcm.buffer);
+  };
+
+  source.connect(scriptNode);
+  scriptNode.connect(audioCtx.destination);
+}
+
+function playAudio(data) {
+  if (!audioCtx) return;
+
+  // Assume 16-bit PCM at 16kHz
+  const int16 = new Int16Array(data);
+  const float32 = new Float32Array(int16.length);
+  for (let i = 0; i < int16.length; i++) {
+    float32[i] = int16[i] / 32768.0;
+  }
+
+  const buffer = audioCtx.createBuffer(1, float32.length, 16000);
+  buffer.getChannelData(0).set(float32);
+
+  const src = audioCtx.createBufferSource();
+  src.buffer = buffer;
+  src.connect(audioCtx.destination);
+  src.start();
+}
+
+function endCall() {
+  active = false;
+  if (ws) { ws.close(); ws = null; }
+  if (scriptNode) { scriptNode.disconnect(); scriptNode = null; }
+  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+
+  bars.forEach(b => b.style.height = '2px');
+  document.getElementById('call-btn').className = 'call-btn idle';
+  setStatus('Call ended', '');
+}
+</script>
+</body>
+</html>

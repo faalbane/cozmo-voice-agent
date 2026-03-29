@@ -2,7 +2,6 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies for audio processing
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libsndfile1 \
@@ -13,8 +12,9 @@ RUN pip install --no-cache-dir .
 
 COPY src/ src/
 COPY scripts/ scripts/
+COPY public/ public/
 
 ENV PYTHONUNBUFFERED=1
 
-ENTRYPOINT ["python", "src/main.py"]
-CMD ["start"]
+# Default: run in server mode (handles multiple concurrent calls)
+CMD ["python", "src/main.py", "--mode", "server", "--port", "8080"]

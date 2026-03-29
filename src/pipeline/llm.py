@@ -1,9 +1,12 @@
-from livekit.plugins import openai
+"""OpenAI LLM configuration for Pipecat."""
+
+import os
+
+from pipecat.services.openai import OpenAILLMService
 
 
-def create_llm() -> openai.LLM:
-    """Create OpenAI LLM optimized for low TTFT in voice conversations."""
-    return openai.LLM(
+def create_llm() -> OpenAILLMService:
+    return OpenAILLMService(
+        api_key=os.getenv("OPENAI_API_KEY"),
         model="gpt-4o-mini",
-        temperature=0.7,
     )
