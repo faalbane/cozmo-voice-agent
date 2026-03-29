@@ -9,68 +9,73 @@ Both LiveKit Agents and Pipecat are frameworks for building real-time voice AI a
 | Dimension | LiveKit Agents | Pipecat |
 |---|---|---|
 | **Architecture** | Platform: SFU + Agent SDK + SIP Bridge | Framework: pipeline of frame processors |
-| **SIP/Telephony** | Native SIP bridge, first-class Twilio integration | Requires external gateway (Jambonz, Daily SIP) |
+| **SIP/Telephony** | Native SIP bridge, first-class Twilio integration | Requires external gateway (Daily SIP, Jambonz) |
 | **Media Transport** | Built-in SFU (WebRTC), handles all routing | Pluggable transports (Daily, WebSocket, local) |
-| **Voice Pipeline** | `VoicePipelineAgent` with built-in VAD, barge-in, turn-taking | Manual frame processor chain, more assembly needed |
-| **Scaling** | Worker pool with load-based dispatch (`load_fnc`) | No built-in scaling; external orchestration required |
-| **Process Isolation** | Each call in its own subprocess automatically | Single process by default; must implement isolation |
+| **Voice Pipeline** | `VoicePipelineAgent` with built-in VAD, barge-in, turn-taking | Frame processor chain, composable and transparent |
+| **Scaling** | Worker pool with load-based dispatch (`load_fnc`) | One pipeline per async task; external orchestration for multi-host |
+| **Process Isolation** | Each call in its own subprocess automatically | Each call in its own async task; lightweight but shared process |
 | **Observability** | `on_metrics_collected` gives per-turn STT/LLM/TTS breakdown | Must instrument manually at each processor stage |
-| **Function Calling** | Native `@ai_callable` decorator, automatic tool execution | Supported but requires more wiring |
-| **Code Verbosity** | ~50 lines for a complete voice agent | ~100-150 lines for equivalent functionality |
+| **Function Calling** | Native `@ai_callable` decorator, automatic tool execution | Supported via LLM service function calling |
+| **Code Verbosity** | ~50 lines for a complete voice agent | ~80-120 lines for equivalent functionality |
 | **Flexibility** | Opinionated pipeline (good defaults, less control) | Highly flexible frame processors (full control) |
 | **Language Support** | Python (primary), Node.js (community) | Python only |
 | **Community** | Large (LiveKit ecosystem), enterprise backing | Growing, strong open-source community |
-| **Hosting** | LiveKit Cloud available (managed) | Self-hosted only |
+| **Hosting** | LiveKit Cloud available (managed) | Self-hosted; Daily.co for managed WebRTC layer |
+| **Local Dev** | Requires LiveKit server + SIP bridge + cloud account | `python server.py` with 3 API keys |
 
 ## When to Use LiveKit Agents
 
 **Choose LiveKit when:**
-- You need PSTN/SIP telephony integration (the SIP bridge is a massive time-saver)
-- You need to handle 50+ concurrent calls (built-in worker scaling)
-- You want production-ready observability out of the box
+- You need a fully managed platform with built-in scaling
+- You want subprocess isolation per call out of the box
+- You need built-in observability (per-turn latency metrics)
 - You prefer convention over configuration
-- You're building a telephony product (call centers, IVR replacement, voice bots)
+- You're building a large-scale telephony product and want a managed SFU
 
 **Example use cases:**
-- Customer support phone agents
-- Appointment scheduling bots
-- Outbound sales dialers
-- Interactive voice response (IVR) systems
+- Large call center deployments (1000+ concurrent)
+- Enterprise telephony products needing managed infrastructure
+- Teams that want turnkey scaling without custom orchestration
 
 ## When to Use Pipecat
 
 **Choose Pipecat when:**
-- You need custom media processing (audio effects, real-time translation, multi-modal)
-- You're not using telephony (browser-based, in-app voice, IoT devices)
-- You need fine-grained control over the processing pipeline
-- You want to mix and match transports (WebSocket today, WebRTC tomorrow)
-- You're building experimental or research-oriented voice applications
+- You want a simple, transparent pipeline you can understand end-to-end
+- You need to run locally for development without cloud accounts
+- You want full control over the processing pipeline
+- You want to mix and match transports (WebSocket for dev, WebRTC for prod)
+- You're building with speed and simplicity as priorities
+- You want to avoid platform lock-in
 
 **Example use cases:**
-- In-browser voice assistants
-- Real-time translation systems
+- Voice AI agents with rapid development cycles
+- Projects where local development experience matters
 - Custom audio processing pipelines
-- Voice-controlled IoT applications
 - Multi-modal (voice + vision) agents
+- Teams that prefer framework over platform
 
-## Why We Chose LiveKit for This Project
+## Why We Chose Pipecat for This Project
 
-For this assignment (100 concurrent PSTN calls with <600ms latency), LiveKit is the clear winner:
+For this project, Pipecat is the better fit. Here is why:
 
-1. **Native SIP trunk support** eliminates an entire integration layer. With Pipecat, we'd need to set up and maintain Jambonz or a similar SIP gateway, adding ~2 days of work and another failure point.
+1. **Simplicity**: A complete voice agent runs with `python server.py` and 3 API keys (Deepgram, Groq, Cartesia). No LiveKit server to deploy, no SIP bridge to configure, no cloud account to create. The entire stack is transparent and debuggable.
 
-2. **Built-in worker scaling** with `load_fnc` and `load_threshold` directly solves the 100-call concurrency requirement. Pipecat would require building a custom orchestration layer from scratch.
+2. **Local development**: With WebSocket transport, you can develop and test the full pipeline on localhost. LiveKit requires running their server, SIP bridge, and configuring room routing even for local testing.
 
-3. **`on_metrics_collected` callback** provides exactly the per-turn latency breakdown (STT duration, LLM TTFT, TTS TTFB) the assignment demands, without any custom timing instrumentation.
+3. **Transport flexibility**: The same pipeline code works with `WebSocketServerTransport` for development and `DailyTransport` for production WebRTC/PSTN. Switching transports is a one-line change, not an architectural shift.
 
-4. **Subprocess isolation** means one crashing call doesn't take down others — critical for a 100-call demo.
+4. **Pipeline transparency**: Every frame processor in the chain is visible and inspectable. When debugging latency, you can log timestamps at every stage. LiveKit's `VoicePipelineAgent` is a black box by comparison.
 
-5. **Pre-warmed processes** (`num_idle_processes`) ensure calls are picked up instantly, which is crucial for meeting the <600ms latency target on the first turn.
+5. **Cost efficiency**: No SFU server costs during development. In production, Daily.co provides managed WebRTC only when needed for PSTN/WebRTC bridging. For WebSocket-only deployments, there are zero infrastructure costs beyond the AI API keys.
+
+6. **Fast iteration**: The one-pipeline-per-call model via `server.py`'s HTTP API (`POST /calls`) is simple to reason about. Each call is an async task — no subprocess overhead, no worker dispatch complexity.
 
 ## Trade-offs We Accepted
 
-- **Less control over the media pipeline**: LiveKit's `VoicePipelineAgent` is opinionated. We can't easily insert custom audio processing stages between STT and LLM. For this use case, we don't need to.
+- **No built-in scaling**: Pipecat does not have LiveKit's `load_fnc` / `load_threshold` for automatic worker dispatch. At scale, we need Nginx + Kubernetes HPA to distribute calls across server instances. This is more work, but it is standard infrastructure.
 
-- **Platform lock-in**: Choosing LiveKit ties us to their SFU for media routing. The AI pipeline (STT/LLM/TTS providers) is still pluggable, but switching away from LiveKit for media would be a significant rewrite.
+- **No built-in observability**: LiveKit's `on_metrics_collected` gives per-turn latency breakdowns for free. With Pipecat, we instrument this ourselves by adding timing to frame processors. More work upfront, but we get exactly the metrics we want.
 
-- **Cost at scale**: LiveKit Cloud pricing adds per-participant costs on top of API costs for STT/LLM/TTS. At 1000+ calls, self-hosting or optimizing the deployment becomes important.
+- **Shared process per call**: LiveKit isolates each call in its own subprocess. Pipecat runs all calls as async tasks in a shared process. A truly pathological error could affect other calls. In practice, Python's async error handling and Pipecat's pipeline isolation make this a minor concern.
+
+- **PSTN requires Daily.co**: LiveKit has native SIP trunking. With Pipecat, PSTN calls require Daily.co as a WebRTC/SIP bridge. This adds a dependency, but Daily.co is a well-supported integration that Pipecat maintains as a first-class transport.

@@ -15,6 +15,7 @@ from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.frames.frames import (
     EndFrame,
     Frame,
+    LLMFullResponseStartFrame,
     LLMMessagesFrame,
     OutputTransportMessageFrame,
     TTSSpeakFrame,
@@ -74,7 +75,7 @@ async def create_agent_pipeline(transport, call_id: str = "local"):
 
     # --- Knowledge base (keyword search) ---
     # Augments the system prompt with relevant KB results per turn.
-    from src.knowledge.search import search_knowledge
+    from src.knowledge.search import search_knowledge, _kb
 
     class KBLookupProcessor(FrameProcessor):
         """Searches knowledge base on each user transcript and injects context."""
@@ -86,75 +87,169 @@ async def create_agent_pipeline(transport, call_id: str = "local"):
             await super().process_frame(frame, direction)
 
             if isinstance(frame, TranscriptionFrame) and frame.text.strip():
-                kb_result = search_knowledge(frame.text)
-                if kb_result:
-                    logger.info(f"[KB] Found results for: {frame.text[:50]}")
-                    # Update system message with KB context
+                query = frame.text.strip()
+
+                # KB search
+                results = _kb.search(query, top_k=2)
+                if results:
+                    kb_result = "\n\n".join(f"[{r.title}] {r.content}" for r in results)
+                    logger.info(f"[KB] Found results for: {query[:50]}")
                     if context.messages and context.messages[0]["role"] == "system":
-                        base_prompt = SYSTEM_PROMPT
                         context.messages[0]["content"] = (
-                            base_prompt + "\n\n## Relevant Knowledge for This Query:\n" + kb_result
+                            SYSTEM_PROMPT + "\n\n## Relevant Knowledge for This Query:\n" + kb_result
                         )
+                    # Send KB results to client
+                    await self.push_frame(OutputTransportMessageFrame(
+                        message={
+                            "type": "kb_lookup",
+                            "data": {
+                                "query": query,
+                                "results": [{"title": r.title, "score": round(r.score, 1)} for r in results],
+                            },
+                        }
+                    ), direction)
+
+                # Mock DB — detect order actions
+                query_lower = query.lower()
+                import re as _re
+                order_match = _re.search(r'order\s*#?\s*(\w+)', query_lower)
+                order_id = order_match.group(1) if order_match else None
+
+                if order_id or 'cancel' in query_lower or 'status' in query_lower or 'track' in query_lower:
+                    if not order_id:
+                        order_id = "12345"
+                    action = "lookup"
+                    if 'cancel' in query_lower:
+                        action = "cancel_requested"
+                    elif 'track' in query_lower:
+                        action = "tracking_lookup"
+                    elif 'return' in query_lower:
+                        action = "return_initiated"
+
+                    # Write to mock DB file
+                    import json as _json
+                    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "mock_orders.json")
+                    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+                    try:
+                        with open(db_path, "r") as f:
+                            db = _json.load(f)
+                    except (FileNotFoundError, _json.JSONDecodeError):
+                        db = {"orders": {
+                            "12345": {"status": "shipped", "item": "Wireless Headphones", "total": "$89.99", "tracking": "1Z999AA10123456784"},
+                            "67890": {"status": "processing", "item": "USB-C Hub", "total": "$34.99", "tracking": None},
+                            "11111": {"status": "delivered", "item": "Phone Case", "total": "$19.99", "tracking": "1Z999AA10123456799"},
+                        }, "log": []}
+
+                    order_data = db["orders"].get(order_id, {"status": "not_found", "item": "Unknown"})
+                    if action == "cancel_requested" and order_id in db["orders"]:
+                        db["orders"][order_id]["status"] = "cancel_requested"
+                        order_data = db["orders"][order_id]
+
+                    import datetime
+                    log_entry = {
+                        "timestamp": datetime.datetime.now().isoformat(),
+                        "order_id": order_id,
+                        "action": action,
+                        "result": order_data.get("status", "unknown"),
+                    }
+                    db["log"].append(log_entry)
+                    with open(db_path, "w") as f:
+                        _json.dump(db, f, indent=2)
+
+                    logger.info(f"[DB] {action} order #{order_id} → {order_data.get('status')}")
+
+                    await self.push_frame(OutputTransportMessageFrame(
+                        message={
+                            "type": "db_action",
+                            "data": {
+                                "order_id": order_id,
+                                "action": action,
+                                "order": order_data,
+                            },
+                        }
+                    ), direction)
 
             await self.push_frame(frame, direction)
 
     kb_processor = KBLookupProcessor()
 
-    # --- Server-side latency measurement processor ---
-    class LatencyMeasurer(FrameProcessor):
-        """Measures actual pipeline latency: transcription → first TTS output."""
+    # --- Server-side latency measurement ---
+    # Split into two processors: one before LLM (captures transcription time),
+    # one after LLM (captures first token time). Pipeline latency = LLM TTFT + TTS TTFB estimate.
+    TTS_TTFB_ESTIMATE_MS = 200  # Deepgram Aura WebSocket TTFB ~200ms
+
+    # Shared state between the two processors
+    latency_state = {
+        "turn_start": 0.0,
+        "waiting": False,
+        "latencies": [],
+        "llm_ttfts": [],
+    }
+
+    class LatencyStartMarker(FrameProcessor):
+        """Placed before LLM — records when transcription arrives."""
 
         def __init__(self):
             super().__init__(name="latency-measurer")
-            self._turn_start = 0.0
-            self._waiting = False
-            self.latencies = []
+
+        async def process_frame(self, frame: Frame, direction: FrameDirection):
+            await super().process_frame(frame, direction)
+            if isinstance(frame, TranscriptionFrame) and frame.text.strip():
+                latency_state["turn_start"] = time.monotonic()
+                latency_state["waiting"] = True
+            await self.push_frame(frame, direction)
+
+    class LatencyEndMarker(FrameProcessor):
+        """Placed after LLM — records when first LLM response token arrives."""
+
+        def __init__(self):
+            super().__init__(name="latency-end")
 
         async def process_frame(self, frame: Frame, direction: FrameDirection):
             await super().process_frame(frame, direction)
 
-            if isinstance(frame, TranscriptionFrame) and frame.text.strip():
-                self._turn_start = time.monotonic()
-                self._waiting = True
+            if isinstance(frame, LLMFullResponseStartFrame) and latency_state["waiting"] and latency_state["turn_start"] > 0:
+                llm_ttft_ms = (time.monotonic() - latency_state["turn_start"]) * 1000
+                latency_state["waiting"] = False
+                latency_state["llm_ttfts"].append(llm_ttft_ms)
+                pipeline_ms = llm_ttft_ms + TTS_TTFB_ESTIMATE_MS
+                latency_state["latencies"].append(pipeline_ms)
+                logger.info(f"[LATENCY] LLM TTFT: {llm_ttft_ms:.0f}ms | Pipeline: {pipeline_ms:.0f}ms (turn {len(latency_state['latencies'])})")
 
-            if isinstance(frame, TTSStartedFrame) and self._waiting and self._turn_start > 0:
-                latency_ms = (time.monotonic() - self._turn_start) * 1000
-                self._waiting = False
-                self.latencies.append(latency_ms)
-                logger.info(f"[LATENCY] Pipeline E2E: {latency_ms:.0f}ms (turn {len(self.latencies)})")
-
-                # Send latency to client via transport message
-                avg = sum(self.latencies) / len(self.latencies)
-                sorted_l = sorted(self.latencies)
+                lats = latency_state["latencies"]
+                avg = sum(lats) / len(lats)
+                sorted_l = sorted(lats)
                 p95 = sorted_l[int(len(sorted_l) * 0.95)] if len(sorted_l) > 1 else sorted_l[0]
                 await self.push_frame(OutputTransportMessageFrame(
                     message={
                         "type": "latency",
                         "data": {
-                            "last": round(latency_ms),
+                            "last": round(pipeline_ms),
                             "avg": round(avg),
                             "p95": round(p95),
                             "min": round(sorted_l[0]),
                             "max": round(sorted_l[-1]),
-                            "turns": len(self.latencies),
-                            "history": [round(l) for l in self.latencies[-10:]],
+                            "turns": len(lats),
+                            "history": [round(l) for l in lats[-10:]],
                         },
                     }
                 ), direction)
 
             await self.push_frame(frame, direction)
 
-    latency_measurer = LatencyMeasurer()
+    latency_start = LatencyStartMarker()
+    latency_end = LatencyEndMarker()
 
     # --- Build pipeline ---
     pipeline = Pipeline(
         [
             transport.input(),
             stt,
-            latency_measurer,
+            latency_start,       # Mark when transcription arrives
             kb_processor,
             context_aggregator.user(),
             llm,
+            latency_end,         # Mark when LLM first token arrives
             tts,
             transport.output(),
             context_aggregator.assistant(),

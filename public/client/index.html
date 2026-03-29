@@ -7,137 +7,184 @@
 <style>
 :root { --bg:#0a0c10; --card:#171a22; --border:#252833; --text:#e4e7f0; --muted:#6b7089; --green:#22c55e; --red:#ef4444; --blue:#3b82f6; --yellow:#eab308; --purple:#a855f7; }
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:24px; }
-.layout { display:grid; grid-template-columns:1fr 360px; gap:20px; max-width:1100px; margin:0 auto; }
-@media(max-width:800px) { .layout { grid-template-columns:1fr; } }
+body { font-family:-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--text); height:100vh; padding:12px; overflow:hidden; }
 
-/* Left panel — conversation */
-.call-panel { text-align:center; }
-.call-panel h1 { font-size:20px; margin-bottom:6px; }
-.call-panel .sub { color:var(--muted); font-size:13px; margin-bottom:20px; }
+/* 4-pane grid: KB left | Chat center | Metrics right | DB bottom */
+.layout {
+  display:grid;
+  grid-template-columns:260px 1fr 320px;
+  grid-template-rows:1fr 180px;
+  grid-template-areas:
+    "kb chat metrics"
+    "db db db";
+  gap:12px;
+  max-width:1400px;
+  margin:0 auto;
+  height:calc(100vh - 24px);
+}
+@media(max-width:1000px) {
+  .layout { grid-template-columns:1fr 1fr; grid-template-rows:auto auto 180px; grid-template-areas: "chat chat" "kb metrics" "db db"; }
+}
+
+/* Pane base */
+.pane {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:8px; padding:12px; overflow-y:auto;
+}
+.pane h3 {
+  font-size:11px; text-transform:uppercase; letter-spacing:0.5px;
+  color:var(--muted); margin-bottom:8px; display:flex; align-items:center; gap:6px;
+  position:sticky; top:0; background:var(--card); padding-bottom:4px; z-index:1;
+}
+.pane h3 .dot { width:6px; height:6px; border-radius:50%; display:inline-block; }
+
+/* KB pane */
+.kb-pane { grid-area:kb; }
+.kb-entry {
+  font-size:11px; line-height:1.5; padding:6px 8px;
+  background:var(--bg); border-radius:4px; margin-bottom:4px;
+  border-left:2px solid var(--blue);
+}
+.kb-entry .match { color:var(--blue); font-weight:600; }
+.kb-entry .score { color:var(--green); font-size:10px; float:right; }
+
+/* Chat pane */
+.chat-pane { grid-area:chat; display:flex; flex-direction:column; overflow:hidden; }
+.chat-header { text-align:center; padding-bottom:8px; flex-shrink:0; }
+.chat-header h1 { font-size:18px; margin-bottom:2px; }
+.chat-header .sub { color:var(--muted); font-size:11px; }
+.call-controls { display:flex; align-items:center; justify-content:center; gap:12px; padding:8px 0; flex-shrink:0; }
+.ws-input {
+  flex:1; max-width:280px; padding:6px 10px; border-radius:6px;
+  border:1px solid var(--border); background:var(--bg);
+  color:var(--text); font-size:11px; font-family:monospace;
+  text-align:center; outline:none;
+}
+.ws-input:focus { border-color:var(--blue); }
 .call-btn {
-  width:100px; height:100px; border-radius:50%; border:none;
-  font-size:36px; cursor:pointer; transition:all .2s;
+  width:48px; height:48px; border-radius:50%; border:none;
+  font-size:20px; cursor:pointer; transition:all .2s;
   display:flex; align-items:center; justify-content:center;
-  margin:0 auto 16px;
 }
 .call-btn.idle { background:var(--green); color:#fff; }
 .call-btn.idle:hover { transform:scale(1.05); background:#16a34a; }
 .call-btn.active { background:var(--red); color:#fff; animation:pulse 2s infinite; }
-@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)}50%{box-shadow:0 0 0 16px rgba(239,68,68,0)} }
-.status { font-size:13px; color:var(--muted); margin-bottom:12px; min-height:18px; }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)}50%{box-shadow:0 0 0 12px rgba(239,68,68,0)} }
+.status { font-size:11px; color:var(--muted); text-align:center; min-height:16px; flex-shrink:0; }
 .status.connected { color:var(--green); }
 .status.error { color:var(--red); }
-.ws-input {
-  width:100%; padding:8px 12px; border-radius:6px;
-  border:1px solid var(--border); background:var(--card);
-  color:var(--text); font-size:12px; font-family:monospace;
-  text-align:center; margin-bottom:12px; outline:none;
-}
-.ws-input:focus { border-color:var(--blue); }
 .transcript {
-  padding:14px; background:var(--card);
-  border:1px solid var(--border); border-radius:10px;
-  text-align:left; min-height:200px; max-height:400px;
-  overflow-y:auto; font-size:13px; line-height:1.6;
+  flex:1; padding:10px; background:var(--bg);
+  border:1px solid var(--border); border-radius:8px;
+  text-align:left; overflow-y:auto; font-size:13px; line-height:1.6;
+  margin-top:6px;
 }
 .t-line { margin-bottom:5px; }
 .t-line .role { font-weight:600; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; }
 .t-line .role.user { color:var(--blue); }
 .t-line .role.bot { color:var(--green); }
 .t-line .role.system { color:var(--muted); }
-.t-line.typing .dots span {
-  animation: blink 1.2s infinite;
-  font-size:16px; letter-spacing:2px; color:var(--muted);
-}
+.t-line.typing .dots span { animation:blink 1.2s infinite; font-size:16px; letter-spacing:2px; color:var(--muted); }
 .t-line.typing .dots span:nth-child(2) { animation-delay:0.2s; }
 .t-line.typing .dots span:nth-child(3) { animation-delay:0.4s; }
 @keyframes blink { 0%,60%,100%{opacity:0.2} 30%{opacity:1} }
+.chat-footer { text-align:center; padding-top:8px; flex-shrink:0; }
+.chat-footer a { padding:6px 16px; border-radius:6px; background:#7c3aed; color:#fff; text-decoration:none; font-size:12px; font-weight:500; }
 
-/* Right panel — metrics */
-.metrics-side { }
-.metrics-side h2 { font-size:15px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
-.metrics-side h2 .tag { font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(34,197,94,0.12); color:var(--green); text-transform:uppercase; font-weight:700; letter-spacing:0.5px; }
-
-.metrics-grid {
-  display:grid; grid-template-columns:repeat(3,1fr);
-  gap:8px; margin-bottom:12px;
-}
-.metric {
-  background:var(--card); border:1px solid var(--border);
-  border-radius:8px; padding:10px; text-align:center;
-}
-.metric-val {
-  font-size:20px; font-weight:700;
-  font-family:'SF Mono',monospace;
-}
+/* Metrics pane */
+.metrics-pane { grid-area:metrics; }
+.metrics-pane h2 { font-size:13px; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.metrics-pane h2 .tag { font-size:8px; padding:2px 5px; border-radius:4px; background:rgba(34,197,94,0.12); color:var(--green); text-transform:uppercase; font-weight:700; }
+.metrics-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:8px; }
+.metric { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px; text-align:center; }
+.metric-val { font-size:16px; font-weight:700; font-family:'SF Mono',monospace; }
 .metric-val.pass { color:var(--green); }
 .metric-val.fail { color:var(--red); }
-.metric-lbl {
-  font-size:9px; color:var(--muted);
-  text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;
-}
-
-.latency-bar-container { margin-bottom:10px; }
-.lat-row {
-  display:flex; align-items:center; gap:6px;
-  margin-bottom:3px; font-size:11px;
-}
-.lat-idx { color:var(--muted); width:24px; text-align:right; font-family:monospace; font-size:10px; }
-.lat-track {
-  flex:1; height:12px; background:var(--card);
-  border:1px solid var(--border); border-radius:3px; overflow:hidden;
-}
-.lat-fill {
-  height:100%; border-radius:2px; transition:width .3s;
-}
+.metric-lbl { font-size:8px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
+.latency-bar-container { margin-bottom:6px; }
+.lat-row { display:flex; align-items:center; gap:4px; margin-bottom:2px; font-size:10px; }
+.lat-idx { color:var(--muted); width:22px; text-align:right; font-family:monospace; font-size:9px; }
+.lat-track { flex:1; height:10px; background:var(--bg); border:1px solid var(--border); border-radius:3px; overflow:hidden; }
+.lat-fill { height:100%; border-radius:2px; transition:width .3s; }
 .lat-fill.fast { background:var(--green); }
 .lat-fill.ok { background:var(--yellow); }
 .lat-fill.slow { background:var(--red); }
-.lat-ms {
-  font-family:monospace; font-size:11px; width:45px; text-align:right;
-}
-.target-line {
-  font-size:11px; color:var(--muted); padding:8px;
-  background:var(--card); border:1px solid var(--border);
-  border-radius:6px; text-align:center;
-}
+.lat-ms { font-family:monospace; font-size:10px; width:42px; text-align:right; }
+.target-line { font-size:10px; color:var(--muted); padding:6px; background:var(--bg); border:1px solid var(--border); border-radius:6px; text-align:center; }
 .target-line .pass { color:var(--green); font-weight:700; }
 .target-line .fail { color:var(--red); font-weight:700; }
 
-.hint { font-size:10px; color:var(--muted); line-height:1.5; margin-top:12px; text-align:center; }
+/* DB pane (bottom) */
+.db-pane { grid-area:db; display:flex; flex-direction:column; }
+.db-pane .db-grid {
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+  gap:6px; flex:1; overflow-y:auto;
+}
+.db-entry {
+  font-size:11px; line-height:1.5; padding:6px 8px;
+  background:var(--bg); border-radius:4px;
+  border-left:2px solid var(--purple);
+}
+.empty-hint { color:var(--muted); font-size:11px; text-align:center; padding:8px; }
 </style>
 </head>
 <body>
 <div class="layout">
 
-  <!-- Left: Conversation -->
-  <div class="call-panel">
-    <h1>ShopEase Voice Agent</h1>
-    <p class="sub">AI customer support — ask about refunds, shipping, or try to cancel</p>
-
-    <input class="ws-input" id="ws-url" value="ws://localhost:8765" placeholder="WebSocket URL">
-    <button class="call-btn idle" id="call-btn">&#128222;</button>
-    <div class="status" id="status">Ready — click to start</div>
-
-    <div class="transcript" id="transcript">
-      <div style="color:var(--muted);text-align:center;">Conversation will appear here</div>
-    </div>
-
-    <div style="margin-top:12px;">
-      <a href="/multi.html" style="display:inline-block;padding:8px 20px;border-radius:6px;background:#7c3aed;color:#fff;text-decoration:none;font-size:13px;font-weight:500;">Test 100 Concurrent Calls →</a>
+  <!-- LEFT: Knowledge Base -->
+  <div class="pane kb-pane">
+    <h3><span class="dot" style="background:var(--green)"></span> Knowledge Base Lookups</h3>
+    <div id="kb-log">
+      <div class="empty-hint">KB searches will appear here as you talk</div>
     </div>
   </div>
 
-  <!-- Right: Metrics -->
-  <div class="metrics-side">
-    <h2>Latency & Quality <span class="tag">live</span></h2>
+  <!-- CENTER: Chat -->
+  <div class="pane chat-pane">
+    <div class="chat-header">
+      <h1>ShopEase Voice Agent</h1>
+      <p class="sub">AI customer support — ask about refunds, shipping, or try to cancel</p>
+    </div>
+    <div class="call-controls">
+      <input class="ws-input" id="ws-url" value="ws://localhost:8765" placeholder="WebSocket URL">
+      <button class="call-btn idle" id="call-btn">&#128222;</button>
+    </div>
+    <div class="status" id="status">Ready — click to start</div>
+    <div class="transcript" id="transcript">
+      <div style="color:var(--muted);text-align:center;">Conversation will appear here</div>
+    </div>
+    <div class="chat-footer">
+      <a href="/multi.html">Test 100 Concurrent Calls &rarr;</a>
+    </div>
+  </div>
+
+  <!-- RIGHT: Metrics -->
+  <div class="pane metrics-pane">
+    <h2>Latency &amp; Quality <span class="tag">live</span></h2>
     <div id="metrics-panel">
-      <div style="color:var(--muted);text-align:center;padding:20px;font-size:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;">
-        Metrics will appear after first response.<br>
-        Measures: user speech end → first bot audio.
+      <div style="color:var(--muted);text-align:center;padding:16px;font-size:11px;">
+        Metrics will appear after first response
       </div>
     </div>
+  </div>
+
+  <!-- BOTTOM: SQLite DB -->
+  <div class="pane db-pane">
+    <h3><span class="dot" style="background:var(--purple)"></span> Order Database <span style="font-size:9px;color:var(--muted);font-weight:400;">(SQLite — live)</span>
+      <span id="db-action-note" style="display:none;margin-left:auto;font-size:10px;color:var(--purple);font-weight:600;"></span>
+    </h3>
+    <div class="db-grid" id="db-log">
+      <div class="empty-hint">Loading orders...</div>
+    </div>
+    <script>
+      fetch('http://localhost:8080/db/orders').then(r=>r.json()).then(data=>{
+        const el=document.getElementById('db-log');
+        if(el&&data.orders){el.innerHTML=data.orders.map(o=>{
+          const sc=o.status==='cancel_requested'||o.status==='return_initiated'?'color:var(--yellow)':o.status==='delivered'?'color:var(--green)':o.status==='shipped'?'color:var(--blue)':'color:var(--muted)';
+          return '<div class="db-entry"><span style="color:var(--purple);font-weight:600">#'+o.order_id+'</span> '+o.item+' <span style="color:var(--muted)">'+o.total+'</span><br>Status: <strong style="'+sc+'">'+o.status+'</strong>'+(o.tracking?' <span style="color:var(--muted);font-size:9px">| '+o.tracking+'</span>':'')+'</div>';
+        }).join('');}
+      }).catch(()=>{document.getElementById('db-log').innerHTML='<div class="empty-hint">Start server to see orders</div>';});
+    </script>
   </div>
 
 </div>

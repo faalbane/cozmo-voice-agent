@@ -72,9 +72,15 @@ async def main():
 
     webbrowser.open(f"http://localhost:{CLIENT_PORT}")
 
-    # Start the single-call Pipecat agent (main event loop)
+    # Start the single-call Pipecat agent (auto-restart on disconnect)
     from src.agent import run_websocket_agent
-    await run_websocket_agent(host="0.0.0.0", port=AGENT_WS_PORT)
+    while True:
+        try:
+            await run_websocket_agent(host="0.0.0.0", port=AGENT_WS_PORT)
+        except Exception as e:
+            print(f"  Agent stopped ({e}), restarting...")
+        print("  Agent pipeline ended, restarting in 1s...")
+        await asyncio.sleep(1)
 
 
 if __name__ == "__main__":

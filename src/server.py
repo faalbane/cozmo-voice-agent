@@ -92,6 +92,133 @@ async def list_calls():
     })
 
 
+@app.get("/kb/search")
+async def kb_search(q: str = ""):
+    """Search the knowledge base and return results."""
+    from src.knowledge.search import _kb
+    results = _kb.search(q, top_k=2)
+    return JSONResponse({
+        "query": q,
+        "results": [{"title": r.title, "doc_id": r.doc_id, "score": round(r.score, 1), "content": r.content[:120]} for r in results],
+    })
+
+
+@app.get("/db/orders")
+async def db_list_orders():
+    """Return all orders from SQLite DB."""
+    from src.db.orders import get_connection
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM orders ORDER BY order_id")
+    rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return JSONResponse({"orders": rows})
+
+
+def _spoken_to_digits(text: str) -> str:
+    """Convert spoken numbers to digits: 'one two three four five' → '12345'."""
+    word_map = {
+        'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
+        'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
+    }
+    import re
+    words = re.findall(r'\b(?:' + '|'.join(word_map.keys()) + r')\b', text.lower())
+    if len(words) >= 3:
+        return ''.join(word_map[w] for w in words)
+    return ''
+
+
+@app.get("/db/action")
+async def db_action(query: str = ""):
+    """Detect order actions from user query and update real SQLite DB."""
+    import re
+    import datetime
+    from src.db.orders import lookup_order, update_order_status
+
+    query_lower = query.lower()
+
+    # Try numeric order ID first, then spoken digits
+    order_match = re.search(r'order\s*#?\s*(\d+)', query_lower)
+    order_id = order_match.group(1) if order_match else None
+    if not order_id:
+        spoken = _spoken_to_digits(query_lower)
+        if spoken:
+            order_id = spoken
+
+    has_action = order_id or any(w in query_lower for w in ['cancel', 'status', 'track', 'return'])
+    if not has_action:
+        return JSONResponse({"action": None})
+
+    if not order_id:
+        order_id = "12345"
+
+    # Detect action from natural language — flexible status updates for any order
+    action = "lookup"
+    new_status = None
+
+    # Known statuses that can be set via voice
+    all_statuses = [
+        'cancelled', 'canceled', 'cancel_requested', 'cancel',
+        'shipped', 'shipping', 'delivered', 'processing',
+        'completed', 'on hold', 'pending', 'returned',
+        'return_initiated', 'refund_processing', 'refunded',
+    ]
+    # Normalize map
+    status_normalize = {
+        'cancelled': 'cancelled', 'canceled': 'cancelled', 'cancel': 'cancelled',
+        'cancel_requested': 'cancel_requested',
+        'shipped': 'shipped', 'shipping': 'shipped',
+        'delivered': 'delivered', 'completed': 'completed',
+        'processing': 'processing', 'pending': 'pending',
+        'on hold': 'on_hold', 'returned': 'returned',
+        'return_initiated': 'return_initiated',
+        'refund_processing': 'refund_processing', 'refunded': 'refunded',
+    }
+
+    # Check for status update keywords
+    is_update = any(w in query_lower for w in ['update', 'change', 'set', 'mark', 'make'])
+    for s in all_statuses:
+        if s in query_lower:
+            new_status = status_normalize.get(s, s)
+            action = f"update_to_{new_status}"
+            break
+
+    # Fallback action detection
+    if not new_status:
+        if 'cancel' in query_lower:
+            action = "cancel_requested"
+            new_status = "cancel_requested"
+        elif 'return' in query_lower:
+            action = "return_initiated"
+            new_status = "return_initiated"
+        elif 'refund' in query_lower:
+            action = "refund_requested"
+            new_status = "refund_processing"
+        elif 'track' in query_lower:
+            action = "tracking_lookup"
+
+    order_data = lookup_order(order_id)
+    if not order_data:
+        order_data = {"status": "not_found", "item": "Unknown", "total": "$0.00"}
+
+    if new_status and order_data.get("status") != "not_found":
+        order_data = update_order_status(order_id, new_status) or order_data
+
+    return JSONResponse({
+        "timestamp": datetime.datetime.now().strftime("%H:%M:%S"),
+        "order_id": order_id,
+        "action": action,
+        "order": {
+            "item": order_data.get("item", "Unknown"),
+            "total": order_data.get("total", "$0.00"),
+            "status": order_data.get("status", "unknown"),
+            "tracking": order_data.get("tracking"),
+            "customer_name": order_data.get("customer_name"),
+        },
+        "db": "SQLite (shopease.db)",
+    })
+
+
 @app.get("/calls/load-test")
 async def load_test_stream(count: int = 100):
     """Stream real load test results via SSE as each batch completes."""

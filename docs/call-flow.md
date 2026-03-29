@@ -4,7 +4,7 @@
 
 ```
 Customer       Twilio        Daily.co        Pipecat           Agent Server       External APIs
-(PSTN)        (SIP Trunk)   (WebRTC)        Pipeline          (FastAPI)          (Deepgram/Groq/Cartesia)
+(PSTN)        (SIP Trunk)   (WebRTC)        Pipeline          (FastAPI)          (Deepgram/Groq)
    │               │              │              │               │                    │
    │  Dial Phone # │              │              │               │                    │
    │──────────────>│              │              │               │                    │
@@ -53,14 +53,14 @@ Customer       Twilio        Daily.co        Pipecat           Agent Server     
    │               │              │     │ 3. LLM: Generate     │ │                    │
    │               │              │     │    response          │─────────────────────>│
    │               │              │     │    (Groq Llama 3.1   │ │                    │
-   │               │              │     │     8B, ~50ms TTFT)  │<────────────────────│
+   │               │              │     │     8B, ~100ms TTFT)  │<────────────────────│
    │               │              │     └──────────┬───────────┘ │                    │
    │               │              │               │              │                    │
    │               │              │               │  4. TTS (streaming)               │
    │               │              │               │──────────────────────────────────>│
-   │               │              │               │  Audio chunks (Cartesia Sonic)    │
+   │               │              │               │  Audio chunks (Deepgram Aura)    │
    │               │              │  Publish audio│<──────────────────────────────────│
-   │  ◄══════ Agent Audio ════════│◄═════════════│               │  (~100ms TTFB)    │
+   │  ◄══════ Agent Audio ════════│◄═════════════│               │  (~200ms TTFB)    │
    │               │              │              │               │                    │
    ║  BARGE-IN SCENARIO:          │              │               │                    │
    ║               │              │              │               │                    │
@@ -86,17 +86,17 @@ Customer       Twilio        Daily.co        Pipecat           Agent Server     
 ## Latency Breakdown per Turn
 
 ```
-Total E2E Target: < 400ms
+Total E2E Target: < 550ms
 
 │◄─────────── End-to-End Latency ────────────────────────────────────►│
 │                                                                      │
 │  VAD        │    STT         │      LLM       │    TTS     │  Net   │
-│  ~50ms      │    ~150ms      │      ~50ms     │    ~100ms  │ ~50ms  │
+│  ~50ms      │    ~150ms      │      ~100ms    │    ~200ms  │ ~50ms  │
 │─────────────│────────────────│────────────────│────────────│────────│
 │  Speech     │  Streaming     │  Streaming     │  Streaming │  WS /  │
 │  endpoint   │  transcription │  TTFT          │  TTFB      │ WebRTC │
-│  detection  │  (Deepgram     │  (Groq Llama   │  (Cartesia │  hop   │
-│  (Silero)   │   Nova-2)      │   3.1 8B)      │   Sonic)   │        │
+│  detection  │  (Deepgram     │  (Groq Llama   │  (Deepgram │  hop   │
+│  (Silero)   │   Nova-2)      │   3.1 8B)      │   Aura)    │        │
 ```
 
 ## Control Plane vs Media Plane
@@ -106,4 +106,4 @@ Total E2E Target: < 400ms
 | **Control** | HTTP | POST /calls → creates Pipecat pipeline (async task) | Pipeline creation: ~10ms (one-time) |
 | **Media (dev)** | WebSocket | Browser ↔ Pipecat pipeline directly | ~50ms round-trip |
 | **Media (prod)** | WebRTC | Twilio → Daily.co → Pipecat pipeline | ~30ms per hop |
-| **AI Pipeline** | HTTPS (streaming) | Pipeline → Deepgram/Groq/Cartesia | ~350ms total (streaming) |
+| **AI Pipeline** | HTTPS (streaming) | Pipeline → Deepgram/Groq | ~450ms total (streaming) |

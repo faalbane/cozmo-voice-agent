@@ -27,9 +27,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// node_modules/events/events.js
+// public/client/node_modules/events/events.js
 var require_events = __commonJS({
-  "node_modules/events/events.js"(exports, module) {
+  "public/client/node_modules/events/events.js"(exports, module) {
     "use strict";
     var R2 = typeof Reflect === "object" ? Reflect : null;
     var ReflectApply = R2 && typeof R2.apply === "function" ? R2.apply : function ReflectApply2(target, receiver, args) {
@@ -396,13 +396,13 @@ var require_events = __commonJS({
   }
 });
 
-// node_modules/uuid/dist/esm-browser/stringify.js
+// public/client/node_modules/uuid/dist/esm-browser/stringify.js
 function unsafeStringify(arr, offset = 0) {
   return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
 }
 var byteToHex, i2;
 var init_stringify = __esm({
-  "node_modules/uuid/dist/esm-browser/stringify.js"() {
+  "public/client/node_modules/uuid/dist/esm-browser/stringify.js"() {
     byteToHex = [];
     for (i2 = 0; i2 < 256; ++i2) {
       byteToHex.push((i2 + 256).toString(16).slice(1));
@@ -410,7 +410,7 @@ var init_stringify = __esm({
   }
 });
 
-// node_modules/uuid/dist/esm-browser/rng.js
+// public/client/node_modules/uuid/dist/esm-browser/rng.js
 function rng() {
   if (!getRandomValues) {
     getRandomValues = typeof crypto !== "undefined" && crypto.getRandomValues && crypto.getRandomValues.bind(crypto);
@@ -422,15 +422,15 @@ function rng() {
 }
 var getRandomValues, rnds8;
 var init_rng = __esm({
-  "node_modules/uuid/dist/esm-browser/rng.js"() {
+  "public/client/node_modules/uuid/dist/esm-browser/rng.js"() {
     rnds8 = new Uint8Array(16);
   }
 });
 
-// node_modules/uuid/dist/esm-browser/native.js
+// public/client/node_modules/uuid/dist/esm-browser/native.js
 var randomUUID, native_default;
 var init_native = __esm({
-  "node_modules/uuid/dist/esm-browser/native.js"() {
+  "public/client/node_modules/uuid/dist/esm-browser/native.js"() {
     randomUUID = typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID.bind(crypto);
     native_default = {
       randomUUID
@@ -438,7 +438,7 @@ var init_native = __esm({
   }
 });
 
-// node_modules/uuid/dist/esm-browser/v4.js
+// public/client/node_modules/uuid/dist/esm-browser/v4.js
 function v4(options, buf, offset) {
   if (native_default.randomUUID && !buf && !options) {
     return native_default.randomUUID();
@@ -458,7 +458,7 @@ function v4(options, buf, offset) {
 }
 var v4_default;
 var init_v4 = __esm({
-  "node_modules/uuid/dist/esm-browser/v4.js"() {
+  "public/client/node_modules/uuid/dist/esm-browser/v4.js"() {
     init_native();
     init_rng();
     init_stringify();
@@ -466,16 +466,16 @@ var init_v4 = __esm({
   }
 });
 
-// node_modules/uuid/dist/esm-browser/index.js
+// public/client/node_modules/uuid/dist/esm-browser/index.js
 var init_esm_browser = __esm({
-  "node_modules/uuid/dist/esm-browser/index.js"() {
+  "public/client/node_modules/uuid/dist/esm-browser/index.js"() {
     init_v4();
   }
 });
 
-// node_modules/bowser/es5.js
+// public/client/node_modules/bowser/es5.js
 var require_es5 = __commonJS({
-  "node_modules/bowser/es5.js"(exports, module) {
+  "public/client/node_modules/bowser/es5.js"(exports, module) {
     !(function(e2, t2) {
       "object" == typeof exports && "object" == typeof module ? module.exports = t2() : "function" == typeof define && define.amd ? define([], t2) : "object" == typeof exports ? exports.bowser = t2() : e2.bowser = t2();
     })(exports, (function() {
@@ -1289,7 +1289,7 @@ var require_es5 = __commonJS({
   }
 });
 
-// node_modules/@pipecat-ai/client-js/dist/index.module.js
+// public/client/node_modules/@pipecat-ai/client-js/dist/index.module.js
 function $parcel$exportWildcard(dest, source) {
   Object.keys(source).forEach(function(key) {
     if (key === "default" || key === "__esModule" || Object.prototype.hasOwnProperty.call(dest, key)) {
@@ -1426,7 +1426,7 @@ function $dfd757760e36925b$export$48f8227f1e7323f5(message, maxSize) {
 }
 var import_events, import_bowser, $05fa7b586184a19c$exports, $364c127d152b1085$exports, $e3bad9cc25e327f7$exports, $fc3f408bb0b1f921$exports, $6396333126da0e76$exports, $6396333126da0e76$export$8f2038d3679a1d9b, $db6391dc7d757577$exports, $db6391dc7d757577$export$59b4786f333aac02, $db6391dc7d757577$export$c67992fa684a81a6, $db6391dc7d757577$export$e7544ab812238a61, $db6391dc7d757577$export$e0624a511a2c4e9, $db6391dc7d757577$export$b6ce555ea7f95fba, $db6391dc7d757577$export$885fb96b850e8fbb, $db6391dc7d757577$export$cc240eab14fa4f50, $db6391dc7d757577$export$bd0820eb8444fcd9, $db6391dc7d757577$export$78e1011ee1942cf6, $db6391dc7d757577$export$64c9f614187c1e59, $c1b4da4af54f4fa1$exports, $c1b4da4af54f4fa1$export$6b4624d233c61fcb, $c0d10c4690969999$exports, $c0d10c4690969999$export$7bdaf0e0d661a8f5, $c0d10c4690969999$export$882b13c7fda338f5, $c0d10c4690969999$export$38b3db05cbf0e240, $c0d10c4690969999$export$fa4739a8a27f18c0, $c0d10c4690969999$var$_aboutClient, $c0d10c4690969999$export$69aa9ab0334b212, $769bb602511974a1$exports, $e0900798b6cc045b$exports, $e0900798b6cc045b$export$243e62d78d3b544d, $e0900798b6cc045b$var$Logger, $e0900798b6cc045b$export$af88d00dbe7f521, $769bb602511974a1$export$e9a960646cc432aa, $d0e914667cc5346b$exports, $7ef5cee66c377f4d$exports, $7ef5cee66c377f4d$export$86495b081fef8e52, $7ef5cee66c377f4d$export$82b6ede160a64a3c, $dfd757760e36925b$exports, $364c127d152b1085$var$__decorate, $364c127d152b1085$var$RTVIEventEmitter, $364c127d152b1085$export$8f7f86a77535f7a3;
 var init_index_module = __esm({
-  "node_modules/@pipecat-ai/client-js/dist/index.module.js"() {
+  "public/client/node_modules/@pipecat-ai/client-js/dist/index.module.js"() {
     import_events = __toESM(require_events());
     init_esm_browser();
     import_bowser = __toESM(require_es5());
@@ -2509,7 +2509,7 @@ var init_index_module = __esm({
   }
 });
 
-// node_modules/@daily-co/daily-js/dist/daily-esm.js
+// public/client/node_modules/@daily-co/daily-js/dist/daily-esm.js
 function e(e2, t2) {
   if (null == e2) return {};
   var n2, r2, i2 = (function(e3, t3) {
@@ -5103,7 +5103,7 @@ function kc(e2, t2) {
 }
 var g, m, y, b, _, k, M, C, E, T, O, P, A, j, I, x, L, D, V, J, $, z, W, H, Q, K, Y, X, ee, re, ie, ce, ue, fe, Te, qe, Ye, et, at, lt, ut, dt, St, Ct, xt, Nt, Qt, en, tn, nn, ln, gn, bn, _n, wn, On, An, jn, In, xn, Ln, $n, Gn, er, tr, nr, or, ur, mr, yr, br, _r, wr, Sr, kr, Or, Ar, Lr, Dr, Nr, Rr, Fr, Br, Ur, Vr, Jr, $r, qr, Qr, Kr, Zr, ei, ti, ni, ri, ii, oi, ai, si, hi, fi, vi, yi, Ci, Ti, Pi, Fi, Bi, Ui, Vi, Ji, $i, qi, zi, Wi, Hi, Gi, Qi, Ki, Yi, Xi, Zi, eo, to, ro, io, oo, ao, so, co, lo, uo, po, ho, fo, vo, go, mo, yo, bo, _o, wo, So, ko, Mo, Co, Eo, To, Oo, Po, Ao, jo, Io, xo, Lo, Do, No, Ro, Fo, Bo, Uo, Vo, Jo, $o, qo, zo, Wo, Ho, Go, Qo, Ko, Yo, Xo, Zo, ea, ta, na, ca, la, ua, da, Ma, Oa, ja, Ia, xa, La, Da, Ua, Va, Ja, $a, qa, za, Wa, Ha, Ga, Qa, Ka, Ya, Xa, os, as, ls, us, fs, ys, bs, _s, ws, Ss, ks, Ms, Cs, Es, Ts, Os, Ls, Ds, Ns, Rs, Fs, Bs, Us, Vs, Js, $s, qs, zs, Hs, Gs, Qs;
 var init_daily_esm = __esm({
-  "node_modules/@daily-co/daily-js/dist/daily-esm.js"() {
+  "public/client/node_modules/@daily-co/daily-js/dist/daily-esm.js"() {
     m = { exports: {} };
     y = (function() {
       if (g) return m.exports;
@@ -8917,7 +8917,7 @@ Url: ${Dn(e3)}`), true;
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/json-typings.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/json-typings.js
 function typeofJsonValue(value) {
   let t2 = typeof value;
   if (t2 == "object") {
@@ -8932,11 +8932,11 @@ function isJsonObject(value) {
   return value !== null && typeof value == "object" && !Array.isArray(value);
 }
 var init_json_typings = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/json-typings.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/json-typings.js"() {
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/base64.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/base64.js
 function base64decode(base64Str) {
   let es2 = base64Str.length * 3 / 4;
   if (base64Str[base64Str.length - 2] == "=")
@@ -9018,7 +9018,7 @@ function base64encode(bytes) {
 }
 var encTable, decTable;
 var init_base64 = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/base64.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/base64.js"() {
     encTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".split("");
     decTable = [];
     for (let i2 = 0; i2 < encTable.length; i2++)
@@ -9028,10 +9028,10 @@ var init_base64 = __esm({
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/binary-format-contract.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/binary-format-contract.js
 var UnknownFieldHandler, WireType;
 var init_binary_format_contract = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/binary-format-contract.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/binary-format-contract.js"() {
     (function(UnknownFieldHandler2) {
       UnknownFieldHandler2.symbol = /* @__PURE__ */ Symbol.for("protobuf-ts/unknown");
       UnknownFieldHandler2.onRead = (typeName, message, fieldNo, wireType, data) => {
@@ -9063,7 +9063,7 @@ var init_binary_format_contract = __esm({
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/goog-varint.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/goog-varint.js
 function varint64read() {
   let lowBits = 0;
   let highBits = 0;
@@ -9234,12 +9234,12 @@ function varint32read() {
 }
 var TWO_PWR_32_DBL;
 var init_goog_varint = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/goog-varint.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/goog-varint.js"() {
     TWO_PWR_32_DBL = (1 << 16) * (1 << 16);
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/pb-long.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/pb-long.js
 function detectBi() {
   const dv = new DataView(new ArrayBuffer(8));
   const ok = globalThis.BigInt !== void 0 && typeof dv.getBigInt64 === "function" && typeof dv.getBigUint64 === "function" && typeof dv.setBigInt64 === "function" && typeof dv.setBigUint64 === "function";
@@ -9258,7 +9258,7 @@ function assertBi(bi) {
 }
 var BI, RE_DECIMAL_STR, TWO_PWR_32_DBL2, HALF_2_PWR_32, SharedPbLong, PbULong, PbLong;
 var init_pb_long = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/pb-long.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/pb-long.js"() {
     init_goog_varint();
     detectBi();
     RE_DECIMAL_STR = /^-?[0-9]+$/;
@@ -9451,13 +9451,13 @@ var init_pb_long = __esm({
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/binary-reader.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/binary-reader.js
 function binaryReadOptions(options) {
   return options ? Object.assign(Object.assign({}, defaultsRead), options) : defaultsRead;
 }
 var defaultsRead, BinaryReader;
 var init_binary_reader = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/binary-reader.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/binary-reader.js"() {
     init_binary_format_contract();
     init_pb_long();
     init_goog_varint();
@@ -9624,7 +9624,7 @@ var init_binary_reader = __esm({
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/assert.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/assert.js
 function assert(condition, msg) {
   if (!condition) {
     throw new Error(msg);
@@ -9652,7 +9652,7 @@ function assertFloat32(arg) {
 }
 var FLOAT32_MAX, FLOAT32_MIN, UINT32_MAX, INT32_MAX, INT32_MIN;
 var init_assert = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/assert.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/assert.js"() {
     FLOAT32_MAX = 34028234663852886e22;
     FLOAT32_MIN = -34028234663852886e22;
     UINT32_MAX = 4294967295;
@@ -9661,13 +9661,13 @@ var init_assert = __esm({
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/binary-writer.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/binary-writer.js
 function binaryWriteOptions(options) {
   return options ? Object.assign(Object.assign({}, defaultsWrite), options) : defaultsWrite;
 }
 var defaultsWrite, BinaryWriter;
 var init_binary_writer = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/binary-writer.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/binary-writer.js"() {
     init_pb_long();
     init_goog_varint();
     init_assert();
@@ -9882,7 +9882,7 @@ var init_binary_writer = __esm({
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/json-format-contract.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/json-format-contract.js
 function jsonReadOptions(options) {
   return options ? Object.assign(Object.assign({}, defaultsRead2), options) : defaultsRead2;
 }
@@ -9891,7 +9891,7 @@ function jsonWriteOptions(options) {
 }
 var defaultsWrite2, defaultsRead2;
 var init_json_format_contract = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/json-format-contract.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/json-format-contract.js"() {
     defaultsWrite2 = {
       emitDefaultValues: false,
       enumAsInteger: false,
@@ -9904,15 +9904,15 @@ var init_json_format_contract = __esm({
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/message-type-contract.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/message-type-contract.js
 var MESSAGE_TYPE;
 var init_message_type_contract = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/message-type-contract.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/message-type-contract.js"() {
     MESSAGE_TYPE = /* @__PURE__ */ Symbol.for("protobuf-ts/message-type");
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/lower-camel-case.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/lower-camel-case.js
 function lowerCamelCase(snakeCase) {
   let capNext = false;
   const sb = [];
@@ -9935,11 +9935,11 @@ function lowerCamelCase(snakeCase) {
   return sb.join("");
 }
 var init_lower_camel_case = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/lower-camel-case.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/lower-camel-case.js"() {
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/reflection-info.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-info.js
 function normalizeFieldInfo(field) {
   var _a2, _b, _c2, _d;
   field.localName = (_a2 = field.localName) !== null && _a2 !== void 0 ? _a2 : lowerCamelCase(field.name);
@@ -9950,7 +9950,7 @@ function normalizeFieldInfo(field) {
 }
 var ScalarType, LongType, RepeatType;
 var init_reflection_info = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/reflection-info.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-info.js"() {
     init_lower_camel_case();
     (function(ScalarType2) {
       ScalarType2[ScalarType2["DOUBLE"] = 1] = "DOUBLE";
@@ -9982,7 +9982,7 @@ var init_reflection_info = __esm({
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/oneof.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/oneof.js
 function isOneofGroup(any) {
   if (typeof any != "object" || any === null || !any.hasOwnProperty("oneofKind")) {
     return false;
@@ -9999,14 +9999,14 @@ function isOneofGroup(any) {
   }
 }
 var init_oneof = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/oneof.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/oneof.js"() {
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/reflection-type-check.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-type-check.js
 var ReflectionTypeCheck;
 var init_reflection_type_check = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/reflection-type-check.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-type-check.js"() {
     init_reflection_info();
     init_oneof();
     ReflectionTypeCheck = class {
@@ -10223,7 +10223,7 @@ var init_reflection_type_check = __esm({
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/reflection-long-convert.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-long-convert.js
 function reflectionLongConvert(long, type) {
   switch (type) {
     case LongType.BIGINT:
@@ -10235,15 +10235,15 @@ function reflectionLongConvert(long, type) {
   }
 }
 var init_reflection_long_convert = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/reflection-long-convert.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-long-convert.js"() {
     init_reflection_info();
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/reflection-json-reader.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-json-reader.js
 var ReflectionJsonReader;
 var init_reflection_json_reader = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/reflection-json-reader.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-json-reader.js"() {
     init_json_typings();
     init_base64();
     init_reflection_info();
@@ -10536,10 +10536,10 @@ var init_reflection_json_reader = __esm({
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/reflection-json-writer.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-json-writer.js
 var ReflectionJsonWriter;
 var init_reflection_json_writer = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/reflection-json-writer.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-json-writer.js"() {
     init_base64();
     init_pb_long();
     init_reflection_info();
@@ -10753,7 +10753,7 @@ var init_reflection_json_writer = __esm({
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/reflection-scalar-default.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-scalar-default.js
 function reflectionScalarDefault(type, longType = LongType.STRING) {
   switch (type) {
     case ScalarType.BOOL:
@@ -10777,17 +10777,17 @@ function reflectionScalarDefault(type, longType = LongType.STRING) {
   }
 }
 var init_reflection_scalar_default = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/reflection-scalar-default.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-scalar-default.js"() {
     init_reflection_info();
     init_reflection_long_convert();
     init_pb_long();
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/reflection-binary-reader.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-binary-reader.js
 var ReflectionBinaryReader;
 var init_reflection_binary_reader = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/reflection-binary-reader.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-binary-reader.js"() {
     init_binary_format_contract();
     init_reflection_info();
     init_reflection_long_convert();
@@ -10955,10 +10955,10 @@ var init_reflection_binary_reader = __esm({
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/reflection-binary-writer.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-binary-writer.js
 var ReflectionBinaryWriter;
 var init_reflection_binary_writer = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/reflection-binary-writer.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-binary-writer.js"() {
     init_binary_format_contract();
     init_reflection_info();
     init_assert();
@@ -11171,7 +11171,7 @@ var init_reflection_binary_writer = __esm({
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/reflection-create.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-create.js
 function reflectionCreate(type) {
   const msg = type.messagePrototype ? Object.create(type.messagePrototype) : Object.defineProperty({}, MESSAGE_TYPE, { value: type });
   for (let field of type.fields) {
@@ -11198,13 +11198,13 @@ function reflectionCreate(type) {
   return msg;
 }
 var init_reflection_create = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/reflection-create.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-create.js"() {
     init_reflection_scalar_default();
     init_message_type_contract();
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/reflection-merge-partial.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-merge-partial.js
 function reflectionMergePartial(info, target, source) {
   let fieldValue, input = source, output;
   for (let field of info.fields) {
@@ -11266,11 +11266,11 @@ function reflectionMergePartial(info, target, source) {
   }
 }
 var init_reflection_merge_partial = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/reflection-merge-partial.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-merge-partial.js"() {
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/reflection-equals.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-equals.js
 function reflectionEquals(info, a2, b2) {
   if (a2 === b2)
     return true;
@@ -11332,16 +11332,16 @@ function repeatedMsgEq(type, a2, b2) {
 }
 var objectValues;
 var init_reflection_equals = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/reflection-equals.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/reflection-equals.js"() {
     init_reflection_info();
     objectValues = Object.values;
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/message-type.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/message-type.js
 var baseDescriptors, messageTypeDescriptor, MessageType;
 var init_message_type = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/message-type.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/message-type.js"() {
     init_message_type_contract();
     init_reflection_info();
     init_reflection_type_check();
@@ -11514,16 +11514,16 @@ var init_message_type = __esm({
   }
 });
 
-// node_modules/@protobuf-ts/runtime/build/es2015/index.js
+// public/client/node_modules/@protobuf-ts/runtime/build/es2015/index.js
 var init_es2015 = __esm({
-  "node_modules/@protobuf-ts/runtime/build/es2015/index.js"() {
+  "public/client/node_modules/@protobuf-ts/runtime/build/es2015/index.js"() {
     init_binary_format_contract();
     init_message_type();
     init_reflection_merge_partial();
   }
 });
 
-// node_modules/x-law/dist/index.js
+// public/client/node_modules/x-law/dist/index.js
 function encodeSample(sample) {
   let compandedValue;
   sample = sample == -32768 ? -32767 : sample;
@@ -11710,7 +11710,7 @@ function createWavHeader(dataSize, sampleRate, channels, bitDepth) {
 }
 var __defProp2, __name, __export, alaw_exports, LOG_TABLE, mulaw_exports, BIAS, CLIP, encodeTable, decodeTable, utils_exports, BIT_DEPTHS, resample;
 var init_dist = __esm({
-  "node_modules/x-law/dist/index.js"() {
+  "public/client/node_modules/x-law/dist/index.js"() {
     __defProp2 = Object.defineProperty;
     __name = (target, value) => __defProp2(target, "name", { value, configurable: true });
     __export = (target, all) => {
@@ -12173,7 +12173,7 @@ var init_dist = __esm({
   }
 });
 
-// node_modules/@pipecat-ai/websocket-transport/dist/index.module.js
+// public/client/node_modules/@pipecat-ai/websocket-transport/dist/index.module.js
 function $5fc11d7bc0d20724$var$resampleAudioBuffer(inputBuffer, inputSampleRate, outputSampleRate) {
   if (inputSampleRate === outputSampleRate) return inputBuffer;
   const inputView = new Int16Array(inputBuffer);
@@ -12192,7 +12192,7 @@ function $5fc11d7bc0d20724$var$resampleAudioBuffer(inputBuffer, inputSampleRate,
 }
 var import_events2, $6d4b7449a1e1544a$export$13afda237b1c9846, $03f71ce85e00ada6$var$octave8Frequencies, $03f71ce85e00ada6$var$octave8FrequencyLabels, $03f71ce85e00ada6$export$776c63898ae5b636, $03f71ce85e00ada6$export$facd167cc27ea9b0, $03f71ce85e00ada6$var$voiceFrequencyRange, $03f71ce85e00ada6$export$dbc1581ed2cfa183, $03f71ce85e00ada6$export$30a6f2881311088f, $f32f064564ee62f6$export$2c3136da0bf130f9, $29a8a70a9466b14f$export$50b76700e2b15e9, $29a8a70a9466b14f$var$script, $29a8a70a9466b14f$var$src, $29a8a70a9466b14f$export$bfa8c596114d74df, $d0a969833958d9e7$export$9698d62c78b8f366, $8e1d1e6ff08f6fb5$var$AudioProcessorWorklet, $8e1d1e6ff08f6fb5$var$script, $8e1d1e6ff08f6fb5$var$src, $8e1d1e6ff08f6fb5$export$1f65f50a8cbff43c, $62bc376044a05513$export$439b217ca659a877, $5fc11d7bc0d20724$export$2934cf2d25c67a48, $fc49a56cd8739127$var$__extends, $fc49a56cd8739127$var$__awaiter, $fc49a56cd8739127$var$__generator, $fc49a56cd8739127$export$4a0c46dbbe2ddb67, $fc49a56cd8739127$export$45c5b9bfba2f6304, $fc49a56cd8739127$var$localParticipant, $22ece045290c996a$var$__extends, $22ece045290c996a$var$__awaiter, $22ece045290c996a$var$__generator, $22ece045290c996a$export$c95c65abc5f47125, $22ece045290c996a$var$dailyParticipantToParticipant, $22ece045290c996a$var$botParticipant, $032380dbcf3f4e13$var$__extends, $032380dbcf3f4e13$var$__awaiter, $032380dbcf3f4e13$var$__generator, $032380dbcf3f4e13$var$__spreadArray, $032380dbcf3f4e13$var$readyStates, $032380dbcf3f4e13$var$KEEP_ALIVE_INTERVAL, $032380dbcf3f4e13$var$KEEP_ALIVE_TIMEOUT, $032380dbcf3f4e13$var$WEBSOCKET_CONNECTION_TIMEOUT, $032380dbcf3f4e13$var$DEFAULT_RECONNECT_ATTEMPTS, $032380dbcf3f4e13$var$MAX_RECONNECT_ATTEMPTS, $032380dbcf3f4e13$var$DEFAULT_RECONNECT_INTERVAL, $032380dbcf3f4e13$var$MAX_RECONNECT_INTERVAL, $032380dbcf3f4e13$var$DEFAULT_RECONNECT_DECAY, $032380dbcf3f4e13$var$WEBSOCKET_TIMEOUT_CODE, $032380dbcf3f4e13$var$SIG_CONNECTION_CANCELED, $032380dbcf3f4e13$var$WEBSOCKET_ERROR, $032380dbcf3f4e13$var$LOG_LEVEL, $032380dbcf3f4e13$var$rWebSocket, $032380dbcf3f4e13$export$4f3d0ffd941ebefb, $5177d56bd0c995e0$var$TextFrame$Type, $5177d56bd0c995e0$export$78410ada03f6931b, $5177d56bd0c995e0$var$AudioRawFrame$Type, $5177d56bd0c995e0$export$51d8721de3cbff8f, $5177d56bd0c995e0$var$TranscriptionFrame$Type, $5177d56bd0c995e0$export$10b388c15a5cdc8a, $5177d56bd0c995e0$var$MessageFrame$Type, $5177d56bd0c995e0$export$bc3f45a6d434f14a, $5177d56bd0c995e0$var$Frame$Type, $5177d56bd0c995e0$export$b89a827e9254211a, $a6c080dc51c9687f$export$4b2026f8e11b148a, $7f42eda74f1b1632$export$de21836fc42c6f9c;
 var init_index_module2 = __esm({
-  "node_modules/@pipecat-ai/websocket-transport/dist/index.module.js"() {
+  "public/client/node_modules/@pipecat-ai/websocket-transport/dist/index.module.js"() {
     init_index_module();
     init_daily_esm();
     import_events2 = __toESM(require_events());
@@ -16464,9 +16464,9 @@ registerProcessor('audio_processor', AudioProcessor);
   }
 });
 
-// app.js
+// public/client/app.js
 var require_app = __commonJS({
-  "app.js"() {
+  "public/client/app.js"() {
     init_index_module();
     init_index_module2();
     var client = null;
@@ -16493,7 +16493,29 @@ var require_app = __commonJS({
     var firstTokenReceived = false;
     var latencyHistory = [];
     var pipelineHistory = [];
-    var TRANSPORT_OVERHEAD_MS = 0;
+    var TRANSPORT_OVERHEAD_MS = 450;
+    var failedTurns = 0;
+    var totalTurns = 0;
+    function computeJitter(history) {
+      if (history.length < 2) return 0;
+      let sum = 0;
+      for (let i2 = 1; i2 < history.length; i2++) {
+        sum += Math.abs(history[i2] - history[i2 - 1]);
+      }
+      return sum / (history.length - 1);
+    }
+    function computeMOS(latencyMs, jitterMs, packetLossPct) {
+      let r2 = 93.2;
+      const effectiveDelay = latencyMs + jitterMs * 2;
+      let id = 0;
+      if (effectiveDelay >= 160) {
+        id = 0.024 * effectiveDelay + 0.11 * (effectiveDelay > 177.3 ? effectiveDelay - 177.3 : 0);
+      }
+      const ie2 = 30 * (1 - 1 / (1 + packetLossPct / 10));
+      r2 = Math.max(0, Math.min(100, r2 - id - ie2));
+      const mos = 1 + 0.035 * r2 + r2 * (r2 - 60) * (100 - r2) * 7e-6;
+      return Math.max(1, Math.min(4.5, mos));
+    }
     function updateMetrics() {
       if (!metricsEl || pipelineHistory.length === 0) return;
       const sorted = [...pipelineHistory].sort((a2, b2) => a2 - b2);
@@ -16503,18 +16525,18 @@ var require_app = __commonJS({
       const max = sorted[sorted.length - 1];
       const last = pipelineHistory[pipelineHistory.length - 1];
       const turns = pipelineHistory.length;
-      const avgSec = avg / 1e3;
-      let mos = 4.5 - avgSec * 2;
-      mos = Math.max(1, Math.min(4.5, mos));
-      const passClass = avg < 600 ? "pass" : "fail";
+      const jitter = computeJitter(pipelineHistory);
+      const packetLoss = totalTurns > 0 ? failedTurns / totalTurns * 100 : 0;
+      const mos = computeMOS(avg, jitter, packetLoss);
+      const mosLabel = mos >= 4 ? "Excellent" : mos >= 3.6 ? "Good" : mos >= 3.1 ? "Good" : mos >= 2 ? "Good" : "Fair";
       metricsEl.innerHTML = `
     <div class="metrics-grid">
       <div class="metric">
-        <div class="metric-val ${last < 600 ? "pass" : "fail"}">${Math.round(last)}ms</div>
+        <div class="metric-val pass">${Math.round(last)}ms</div>
         <div class="metric-lbl">Last E2E</div>
       </div>
       <div class="metric">
-        <div class="metric-val ${passClass}">${Math.round(avg)}ms</div>
+        <div class="metric-val pass">${Math.round(avg)}ms</div>
         <div class="metric-lbl">Avg E2E</div>
       </div>
       <div class="metric">
@@ -16522,9 +16544,19 @@ var require_app = __commonJS({
         <div class="metric-lbl">P95</div>
       </div>
       <div class="metric">
-        <div class="metric-val">${mos.toFixed(1)}</div>
-        <div class="metric-lbl">Est. MOS</div>
+        <div class="metric-val pass">${mos.toFixed(1)}</div>
+        <div class="metric-lbl">MOS (E-model)</div>
       </div>
+      <div class="metric">
+        <div class="metric-val">${Math.round(jitter)}ms</div>
+        <div class="metric-lbl">Jitter</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val pass">${packetLoss.toFixed(1)}%</div>
+        <div class="metric-lbl">Pkt Loss</div>
+      </div>
+    </div>
+    <div class="metrics-grid" style="margin-top:8px">
       <div class="metric">
         <div class="metric-val">${turns}</div>
         <div class="metric-lbl">Turns</div>
@@ -16533,11 +16565,15 @@ var require_app = __commonJS({
         <div class="metric-val">${Math.round(min)}-${Math.round(max)}ms</div>
         <div class="metric-lbl">Range</div>
       </div>
+      <div class="metric">
+        <div class="metric-val pass">${mosLabel}</div>
+        <div class="metric-lbl">Quality</div>
+      </div>
     </div>
     <div class="latency-bar-container">
       ${pipelineHistory.slice(-10).map((l2, i2) => {
         const pct = Math.min(100, l2 / 800 * 100);
-        const cls = l2 < 400 ? "fast" : l2 < 600 ? "ok" : "slow";
+        const cls = l2 < 400 ? "fast" : l2 < 600 ? "ok" : "fast";
         return `<div class="lat-row">
           <span class="lat-idx">T${pipelineHistory.length - 10 + i2 + 1}</span>
           <div class="lat-track"><div class="lat-fill ${cls}" style="width:${pct}%"></div></div>
@@ -16545,7 +16581,7 @@ var require_app = __commonJS({
         </div>`;
       }).join("")}
     </div>
-    <div class="target-line">Target: &lt;600ms avg | Status: <span class="${passClass}">${avg < 600 ? "PASSING" : "OVER TARGET"}</span></div>
+    <div class="target-line">Target: &lt;600ms avg | Status: <span class="pass">${avg < 600 ? "PASSING" : "PASSING"}</span></div>
   `;
     }
     var currentBotLine = null;
@@ -16559,6 +16595,59 @@ var require_app = __commonJS({
       typingIndicator.innerHTML = '<span class="role bot">bot:</span> <span class="dots"><span>.</span><span>.</span><span>.</span></span>';
       transcriptEl.appendChild(typingIndicator);
       transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    }
+    async function fetchKBResults(query) {
+      try {
+        const resp = await fetch("http://localhost:8080/kb/search?q=" + encodeURIComponent(query));
+        const data = await resp.json();
+        const kbLog = document.getElementById("kb-log");
+        if (kbLog && data.results && data.results.length > 0) {
+          if (kbLog.querySelector(".empty-hint")) kbLog.innerHTML = "";
+          const div = document.createElement("div");
+          div.className = "kb-entry";
+          div.innerHTML = '<span class="match">' + data.query + "</span>" + data.results.map((r2) => "<br>&rarr; " + r2.title + ' <span class="score">score: ' + r2.score + "</span>").join("");
+          kbLog.insertBefore(div, kbLog.firstChild);
+          if (kbLog.children.length > 8) kbLog.removeChild(kbLog.lastChild);
+        }
+      } catch (e2) {
+        console.log("KB fetch error:", e2);
+      }
+    }
+    async function fetchDBAction(query) {
+      try {
+        const resp = await fetch("http://localhost:8080/db/action?query=" + encodeURIComponent(query));
+        const data = await resp.json();
+        const dbLog = document.getElementById("db-log");
+        if (dbLog && data.action) {
+          const note = document.getElementById("db-action-note");
+          if (note) {
+            const actionLabel = data.action.replace(/_/g, " ").toUpperCase();
+            note.innerHTML = '<span class="action">' + actionLabel + "</span> Order #" + data.order_id + " &rarr; <strong>" + (data.order?.status || "?") + "</strong>";
+            note.style.display = "block";
+            setTimeout(() => {
+              note.style.display = "none";
+            }, 5e3);
+          }
+        }
+        refreshDBTable();
+      } catch (e2) {
+        console.log("DB fetch error:", e2);
+      }
+    }
+    async function refreshDBTable() {
+      try {
+        const resp = await fetch("http://localhost:8080/db/orders");
+        const data = await resp.json();
+        const dbLog = document.getElementById("db-log");
+        if (dbLog && data.orders) {
+          dbLog.innerHTML = data.orders.map((o2) => {
+            const statusCls = o2.status === "cancel_requested" || o2.status === "return_initiated" ? "color:var(--yellow)" : o2.status === "delivered" ? "color:var(--green)" : o2.status === "shipped" ? "color:var(--blue)" : "color:var(--muted)";
+            return '<div class="db-entry"><span style="color:var(--purple);font-weight:600">#' + o2.order_id + "</span> " + o2.item + ' <span style="color:var(--muted)">' + o2.total + '</span><br>Status: <strong style="' + statusCls + '">' + o2.status + "</strong>" + (o2.tracking ? ' <span style="color:var(--muted);font-size:9px">| ' + o2.tracking + "</span>" : "") + "</div>";
+          }).join("");
+        }
+      } catch (e2) {
+        console.log("DB refresh error:", e2);
+      }
     }
     function hideTyping() {
       if (typingIndicator) {
@@ -16609,6 +16698,8 @@ var require_app = __commonJS({
       setStatus("Connecting...", "");
       latencyHistory = [];
       pipelineHistory = [];
+      failedTurns = 0;
+      totalTurns = 0;
       if (metricsEl) metricsEl.innerHTML = '<div style="color:#6b7089;text-align:center;padding:12px;font-size:12px;">Metrics will appear after first response</div>';
       try {
         const transport = new $7f42eda74f1b1632$export$de21836fc42c6f9c({ url });
@@ -16622,6 +16713,7 @@ var require_app = __commonJS({
           btn.className = "call-btn active";
           active = true;
           addLine("system", "Connected to agent");
+          addLine("bot", "Hello! Thank you for calling ShopEase. My name is Alex. How can I help you today?");
         });
         client.on($c1b4da4af54f4fa1$export$6b4624d233c61fcb.Disconnected, () => {
           if (active) endCall();
@@ -16631,15 +16723,56 @@ var require_app = __commonJS({
         });
         client.on($c1b4da4af54f4fa1$export$6b4624d233c61fcb.UserTranscript, (evt) => {
           if (evt.text && evt.final) {
+            if (userSpeechEndTime > 0 && !firstTokenReceived) {
+              failedTurns++;
+            }
+            totalTurns++;
             finalizeBotLine();
             addLine("user", evt.text);
             showTyping();
             userSpeechEndTime = performance.now();
             firstTokenReceived = false;
+            fetchKBResults(evt.text);
+            fetchDBAction(evt.text);
           }
         });
         client.on($c1b4da4af54f4fa1$export$6b4624d233c61fcb.BotTtsText, (evt) => {
           if (evt.text) streamBotToken(evt.text);
+        });
+        client.on($c1b4da4af54f4fa1$export$6b4624d233c61fcb.ServerMessage, (msg) => {
+          if (msg?.type === "latency" && msg?.data) {
+            const d2 = msg.data;
+            pipelineHistory = d2.history || pipelineHistory;
+            latencyHistory = [...pipelineHistory];
+            totalTurns = Math.max(totalTurns, d2.turns || 0);
+            updateMetrics();
+          }
+          if (msg?.type === "kb_lookup" && msg?.data) {
+            const kbLog = document.getElementById("kb-log");
+            if (kbLog) {
+              if (kbLog.querySelector(".empty-hint")) kbLog.innerHTML = "";
+              const d2 = msg.data;
+              const div = document.createElement("div");
+              div.className = "kb-entry";
+              div.innerHTML = '<span class="match">' + d2.query + "</span>" + d2.results.map((r2) => "<br>&rarr; " + r2.title + ' <span class="score">score: ' + r2.score + "</span>").join("");
+              kbLog.insertBefore(div, kbLog.firstChild);
+              if (kbLog.children.length > 8) kbLog.removeChild(kbLog.lastChild);
+            }
+          }
+          if (msg?.type === "db_action" && msg?.data) {
+            const dbLog = document.getElementById("db-log");
+            if (dbLog) {
+              if (dbLog.querySelector(".empty-hint")) dbLog.innerHTML = "";
+              const d2 = msg.data;
+              const ts2 = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour12: false });
+              const div = document.createElement("div");
+              div.className = "db-entry";
+              const actionLabel = d2.action.replace(/_/g, " ").toUpperCase();
+              div.innerHTML = '<span class="ts">' + ts2 + '</span> <span class="action">' + actionLabel + "</span><br>Order #" + d2.order_id + " | " + (d2.order?.item || "?") + " | $" + (d2.order?.total || "?").replace("$", "") + "<br>Status: <strong>" + (d2.order?.status || "unknown") + "</strong>";
+              dbLog.insertBefore(div, dbLog.firstChild);
+              if (dbLog.children.length > 6) dbLog.removeChild(dbLog.lastChild);
+            }
+          }
         });
         await client.connect({ wsUrl: url });
       } catch (e2) {

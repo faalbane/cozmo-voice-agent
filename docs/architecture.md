@@ -20,8 +20,8 @@
 │  │  Pipecat Pipeline (one per call, async task)                   │  │
 │  │                                                                │  │
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐  │  │
-│  │  │ Silero   │→ │ Deepgram │→ │  Groq    │→ │  Cartesia    │  │  │
-│  │  │ VAD      │  │ STT      │  │ Llama 3.1│  │  TTS         │  │  │
+│  │  │ Silero   │→ │ Deepgram │→ │  Groq    │→ │  Deepgram    │  │  │
+│  │  │ VAD      │  │ STT      │  │ Llama 3.1│  │  Aura TTS    │  │  │
 │  │  │ (local)  │  │ (stream) │  │ 8B       │  │  (stream)    │  │  │
 │  │  └──────────┘  └──────────┘  └────┬─────┘  └──────────────┘  │  │
 │  │                                    │                           │  │
@@ -35,9 +35,12 @@
 └───────────────────────────────────────┼──────────────────────────────┘
                                         │
 ┌───────────────────┐  ┌───────────────────┐  ┌───────────────────────┐
-│     ChromaDB      │  │      Redis        │  │  Prometheus + Grafana │
-│  (available, not  │  │  (Call State)     │  │  (Observability)      │
-│   required)       │  └───────────────────┘  └───────────────────────┘
+│  Keyword Search   │  │      Redis        │  │  Prometheus + Grafana │
+│  KB (in-memory,   │  │  (Call State)     │  │  (Observability)      │
+│  term-frequency)  │  └───────────────────┘  └───────────────────────┘
+├───────────────────┤
+│  SQLite (Order    │
+│  Database)        │
 └───────────────────┘
 ```
 
@@ -50,7 +53,7 @@
 | **Built-in interruption** | `allow_interruptions=True` handles barge-in natively |
 | **Function calling** | LLM can call knowledge base tools mid-conversation |
 | **Simple scaling** | One async task per call, no subprocess overhead |
-| **Zero cloud lock-in** | Runs locally with just 3 API keys (Deepgram, Groq, Cartesia) |
+| **Zero cloud lock-in** | Runs locally with just 2 API keys (Deepgram STT/TTS, Groq) |
 | **Simple local dev** | No cloud account needed — `python server.py` and go |
 
 ## Scaling Model
